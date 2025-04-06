@@ -215,7 +215,21 @@ class GroupCommands(commands.Cog):
                 return
             
             # If rank name is provided, change the rank
-            roblox_token = server_config.get("roblox_token")
+            # Get token from database
+            from app import app
+            from models import RobloxToken
+            
+            # Get guild owner ID
+            owner_id = interaction.guild.owner_id
+            
+            try:
+                with app.app_context():
+                    token_entry = RobloxToken.query.filter_by(discord_id=owner_id).first()
+                    roblox_token = token_entry.encrypted_token if token_entry else None
+                    logger.info(f"Retrieved Roblox token for guild owner {owner_id}: {'Found' if token_entry else 'Not found'}")
+            except Exception as e:
+                logger.error(f"Error retrieving Roblox token: {e}")
+                roblox_token = None
             
             if not roblox_token:
                 await interaction.followup.send(
