@@ -67,11 +67,16 @@ class GroupCommands(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         try:
-            # Validate the token by trying to get the CSRF token
-            csrf_token = await self.roblox_api.get_csrf_token(token)
-            if not csrf_token:
+            # Validate the token by trying to get the authenticated user
+            user_data = await self.roblox_api.get_authenticated_user(token)
+            if not user_data or "name" not in user_data:
                 await interaction.followup.send("Invalid token. Please check your cookie and try again.", ephemeral=True)
                 return
+            
+            # Get the Roblox username
+            roblox_username = user_data["name"]
+            roblox_display_name = user_data.get("displayName", roblox_username)
+            roblox_id = user_data["id"]
             
             # Store the token
             for guild in self.bot.guilds:
@@ -80,9 +85,21 @@ class GroupCommands(commands.Cog):
                     
                     embed = Embed(
                         title="Token Setup Successful ✅",
-                        description="Successfully set up the Roblox API token for your server.",
+                        description=f"Successfully logged in as **{roblox_username}** (Display Name: {roblox_display_name}).",
                         color=Color.green()
                     )
+                    
+                    # Get the user's avatar
+                    avatar_url = await self.roblox_api.get_user_thumbnail(roblox_id)
+                    if avatar_url:
+                        embed.set_thumbnail(url=avatar_url)
+                    
+                    embed.add_field(
+                        name="Account Info",
+                        value=f"**Username:** {roblox_username}\n**User ID:** {roblox_id}",
+                        inline=False
+                    )
+                    
                     embed.add_field(
                         name="Security Notice",
                         value="Your token has been securely stored. Never share your token with anyone else.",
@@ -90,7 +107,7 @@ class GroupCommands(commands.Cog):
                     )
                     
                     await interaction.followup.send(embed=embed, ephemeral=True)
-                    logger.info(f"Roblox token set by {interaction.user.name} (ID: {interaction.user.id})")
+                    logger.info(f"Roblox token set by {interaction.user.name} (ID: {interaction.user.id}) for Roblox account: {roblox_username}")
                     return
             
             await interaction.followup.send(

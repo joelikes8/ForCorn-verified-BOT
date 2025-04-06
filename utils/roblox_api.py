@@ -187,3 +187,21 @@ class RobloxAPI:
             return response["roles"]
         
         return []
+        
+    async def get_authenticated_user(self, token):
+        """Get information about the authenticated user from token"""
+        url = "https://users.roblox.com/v1/users/authenticated"
+        headers = {"Cookie": f".ROBLOSECURITY={token}"}
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        user_data = await response.json()
+                        return user_data
+                    else:
+                        logger.error(f"Failed to get authenticated user: HTTP {response.status}")
+                        return None
+        except Exception as e:
+            logger.error(f"Error getting authenticated user: {e}")
+            return None
