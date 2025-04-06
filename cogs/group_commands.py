@@ -308,11 +308,29 @@ class GroupCommands(commands.Cog):
             is_in_group = await self.roblox_api.is_user_in_group(user_id, group_id)
             
             if not is_in_group:
+                # Get group info to include in error message
+                group_info = await self.roblox_api.get_group_info(group_id)
+                group_name = group_info.get("name", f"Group {group_id}") if group_info else f"Group {group_id}"
+                
                 embed = Embed(
                     title="User Not in Group ❌",
-                    description=f"User **{roblox_username}** is not in the group.",
+                    description=f"User **{roblox_username}** is not in **{group_name}**.",
                     color=Color.red()
                 )
+                
+                # Add more helpful information
+                embed.add_field(
+                    name="Next Steps",
+                    value="The user needs to join the group on Roblox first before they can be ranked.",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="Group Link",
+                    value=f"https://www.roblox.com/groups/{group_id}",
+                    inline=False
+                )
+                
                 await interaction.followup.send(embed=embed)
                 return
             
@@ -370,10 +388,35 @@ class GroupCommands(commands.Cog):
                 roblox_token = None
             
             if not roblox_token:
-                await interaction.followup.send(
-                    "No Roblox API token has been set up. Please ask the server owner to set it up using /setuptoken in DMs.",
-                    ephemeral=True
+                # Get the server's configured group ID to include in message
+                try:
+                    with app.app_context():
+                        guild_data = Guild.query.get(guild_id)
+                        configured_group_id = guild_data.group_id if guild_data else "Not configured"
+                except Exception:
+                    configured_group_id = "Error retrieving"
+                
+                embed = Embed(
+                    title="Roblox Token Not Set Up ❌",
+                    description="No Roblox API token has been set up for this server.",
+                    color=Color.red()
                 )
+                
+                embed.add_field(
+                    name="Current Configuration",
+                    value=f"Group ID: `{configured_group_id}`\nToken: `Not Set`",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="Setup Instructions",
+                    value="1. The server owner needs to DM the bot\n"
+                          "2. Use the `/setuptoken` command with your Roblox API token\n"
+                          "3. Ensure the account has ranking permissions in the group",
+                    inline=False
+                )
+                
+                await interaction.followup.send(embed=embed, ephemeral=True)
                 return
             
             # Get group roles

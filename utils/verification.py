@@ -69,7 +69,7 @@ class VerificationSystem:
         """Check if the verification code is in the user's Roblox profile"""
         try:
             # Import the database models here to avoid circular imports
-            from app import db
+            from app import db, app
             from models import RobloxVerification
             
             # Get user info and check if the code is in their profile
@@ -81,23 +81,26 @@ class VerificationSystem:
             description = await self.roblox_api.get_user_description(user_id)
             
             if code in description:
-                # Store the verification in the database
-                existing_verification = RobloxVerification.query.filter_by(discord_id=member.id).first()
+                # Store the verification in the database - using app context properly
+                with app.app_context():
+                    # Check if there's already a verification record
+                    existing_verification = RobloxVerification.query.filter_by(discord_id=member.id).first()
+                    
+                    if existing_verification:
+                        # Update existing record
+                        existing_verification.roblox_id = user_id
+                        existing_verification.roblox_username = roblox_username
+                    else:
+                        # Create new record
+                        new_verification = RobloxVerification(
+                            discord_id=member.id,
+                            roblox_id=user_id,
+                            roblox_username=roblox_username
+                        )
+                        db.session.add(new_verification)
+                    
+                    db.session.commit()
                 
-                if existing_verification:
-                    # Update existing record
-                    existing_verification.roblox_id = user_id
-                    existing_verification.roblox_username = roblox_username
-                else:
-                    # Create new record
-                    new_verification = RobloxVerification(
-                        discord_id=member.id,
-                        roblox_id=user_id,
-                        roblox_username=roblox_username
-                    )
-                    db.session.add(new_verification)
-                
-                db.session.commit()
                 logger.info(f"User {member.id} verified as Roblox user {roblox_username} (ID: {user_id})")
                 return True, user_id
             else:
@@ -111,15 +114,20 @@ class VerificationSystem:
         """Update the nickname of a member based on their Roblox info"""
         try:
             # Import the database models here to avoid circular imports
+            from app import app
             from models import RobloxVerification
             
             # Get the Roblox user ID from database if verified, else from username
-            verification = RobloxVerification.query.filter_by(discord_id=member.id).first()
+            user_id = None
+            with app.app_context():
+                verification = RobloxVerification.query.filter_by(discord_id=member.id).first()
+                
+                if verification:
+                    user_id = verification.roblox_id
+                    roblox_username = verification.roblox_username
             
-            if verification:
-                user_id = verification.roblox_id
-                roblox_username = verification.roblox_username
-            else:
+            # If not found in database, try to get from API
+            if not user_id:
                 user_id = await self.roblox_api.get_user_id_from_username(roblox_username)
                 if not user_id:
                     return False, "Could not find that Roblox username."
