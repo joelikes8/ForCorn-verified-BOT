@@ -30,25 +30,63 @@ class RobloxAPI:
             token = token.strip().strip('"\'')
             
             headers["Cookie"] = f".ROBLOSECURITY={token}"
-            csrf_token = await self.get_csrf_token(token)
-            if csrf_token:
-                headers["X-CSRF-TOKEN"] = csrf_token
+            
+            # Get CSRF token for requests that might need it
+            if method in ["POST", "PATCH", "PUT", "DELETE"]:
+                csrf_token = await self.get_csrf_token(token)
+                if csrf_token:
+                    headers["X-CSRF-TOKEN"] = csrf_token
+                else:
+                    logger.warning(f"Failed to get CSRF token for {method} request to {url}")
+        
+        # Add content type for requests with data
+        if data and "Content-Type" not in headers:
+            headers["Content-Type"] = "application/json"
         
         try:
+            logger.info(f"Making {method} request to {url}")
             async with aiohttp.ClientSession() as session:
                 async with session.request(
                     method=method,
                     url=url,
                     headers=headers,
                     json=data,
-                    params=params
+                    params=params,
+                    timeout=15  # Add timeout for better reliability
                 ) as response:
                     if response.status == 200:
-                        return await response.json()
+                        try:
+                            return await response.json()
+                        except aiohttp.ContentTypeError:
+                            # Some endpoints might return non-JSON responses even with 200 status
+                            response_text = await response.text()
+                            logger.warning(f"Could not parse JSON from 200 response: {response_text}")
+                            return {"success": True, "text": response_text}
                     else:
                         error_text = await response.text()
                         logger.error(f"Error {response.status} from Roblox API: {error_text}")
+                        
+                        # Check for common errors and log more details
+                        if response.status == 401:
+                            logger.error("Authentication failed - token may be invalid or expired")
+                        elif response.status == 403:
+                            # Check if we need a CSRF token
+                            if "X-CSRF-TOKEN" not in headers and method != "GET":
+                                logger.error("Missing CSRF token for non-GET request")
+                            else:
+                                logger.error("Permission denied - check if the authenticated user has necessary permissions")
+                        elif response.status == 404:
+                            logger.error(f"Resource not found at {url}")
+                        elif response.status == 429:
+                            logger.error("Rate limit exceeded. Please try again later.")
+                        
                         return None
+        except aiohttp.ClientConnectorError as e:
+            logger.error(f"Connection error for {url}: {e}")
+            return None
+        except aiohttp.ClientError as e:
+            logger.error(f"Client error for {url}: {e}")
+            return None
         except Exception as e:
             logger.error(f"Request to {url} failed: {e}")
             return None
@@ -66,17 +104,49 @@ class RobloxAPI:
         
         try:
             async with aiohttp.ClientSession() as session:
+                # First try the auth endpoint to trigger CSRF generation
                 async with session.post(
                     f"{self.base_url}/csrf-token",
-                    headers=headers
+                    headers=headers,
+                    timeout=15  # Increase timeout for reliability
                 ) as response:
+                    # Roblox returns 403 with a CSRF token when the endpoint is hit without a CSRF token
                     if response.status == 403:
                         csrf_token = response.headers.get("x-csrf-token")
                         if csrf_token:
                             logger.info("Successfully obtained CSRF token")
                             return csrf_token
-                    logger.error(f"Failed to get CSRF token: Status {response.status}")
-                    return ""
+                    
+                    # If we didn't get a CSRF token from the first attempt, try an alternative endpoint
+                    if response.status != 403 or not response.headers.get("x-csrf-token"):
+                        logger.warning(f"First CSRF token attempt failed with status {response.status}, trying alternative endpoint")
+                        # Try another endpoint that also returns a CSRF token
+                        async with session.post(
+                            "https://auth.roblox.com/v2/logout",
+                            headers=headers,
+                            timeout=15
+                        ) as alt_response:
+                            if alt_response.status == 403:
+                                csrf_token = alt_response.headers.get("x-csrf-token")
+                                if csrf_token:
+                                    logger.info("Successfully obtained CSRF token from alternative endpoint")
+                                    return csrf_token
+                            
+                            # Log detailed information if both attempts fail
+                            logger.error(f"Failed to get CSRF token from both endpoints. Status: {alt_response.status}")
+                            try:
+                                error_text = await alt_response.text()
+                                logger.error(f"Response body: {error_text}")
+                            except:
+                                pass
+                            
+                    return ""  # Return empty string if all attempts fail
+        except aiohttp.ClientConnectorError as e:
+            logger.error(f"Connection error while getting CSRF token: {e}")
+            return ""
+        except aiohttp.ClientError as e:
+            logger.error(f"Client error while getting CSRF token: {e}")
+            return ""
         except Exception as e:
             logger.error(f"Failed to get CSRF token: {e}")
             return ""
@@ -193,9 +263,60 @@ class RobloxAPI:
         url = f"{self.groups_base_url}/v1/groups/{group_id}/users/{user_id}"
         data = {"roleId": rank_id}
         
-        response = await self.make_request(url, method="PATCH", data=data, token=token)
+        # Clean up token if needed
+        if token.startswith(".ROBLOSECURITY="):
+            token = token.replace(".ROBLOSECURITY=", "")
+        token = token.strip().strip('"\'')
         
-        return response is not None
+        # First, get a CSRF token separately with detailed logging
+        csrf_token = await self.get_csrf_token(token)
+        if not csrf_token:
+            logger.error(f"Failed to get CSRF token for ranking user {user_id} in group {group_id}")
+            return False
+        
+        headers = {
+            "Cookie": f".ROBLOSECURITY={token}",
+            "X-CSRF-TOKEN": csrf_token,
+            "Content-Type": "application/json"
+        }
+        
+        # Make the request manually to get more detailed error information
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.patch(
+                    url,
+                    json=data,
+                    headers=headers,
+                    timeout=15
+                ) as response:
+                    # Log detailed response information
+                    response_text = await response.text()
+                    
+                    if response.status == 200:
+                        logger.info(f"Successfully ranked user {user_id} to role {rank_id} in group {group_id}")
+                        return True
+                    else:
+                        logger.error(f"Failed to rank user {user_id} in group {group_id}. Status: {response.status}")
+                        logger.error(f"Response body: {response_text}")
+                        
+                        # Check for common errors
+                        if response.status == 401:
+                            logger.error("Authentication failed - token may be invalid or expired")
+                        elif response.status == 403:
+                            logger.error("Permission denied - check if the authenticated user has ranking permissions")
+                        elif response.status == 400:
+                            logger.error("Bad request - role ID may be invalid or user cannot be ranked to this role")
+                        
+                        return False
+        except aiohttp.ClientConnectorError as e:
+            logger.error(f"Connection error while ranking user: {e}")
+            return False
+        except aiohttp.ClientError as e:
+            logger.error(f"Client error while ranking user: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Error ranking user {user_id} in group {group_id}: {e}")
+            return False
     
     async def get_group_roles(self, group_id):
         """Get all roles in a group"""
