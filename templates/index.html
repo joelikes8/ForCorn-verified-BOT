@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Group Manager Bot</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <style>
+        .bot-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .online {
+            background-color: rgba(25, 135, 84, 0.2);
+            border: 1px solid #198754;
+        }
+        .offline {
+            background-color: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+        }
+        .initializing {
+            background-color: rgba(255, 193, 7, 0.2);
+            border: 1px solid #ffc107;
+        }
+        .feature-card {
+            height: 100%;
+            transition: transform 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        .command-table {
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <header class="pb-3 mb-4 border-bottom">
+            <div class="d-flex align-items-center text-white">
+                <span class="fs-4">Roblox Group Manager Bot</span>
+            </div>
+        </header>
+
+        <div id="status-container" class="bot-status initializing mb-4">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status" id="status-spinner">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 class="mb-0" id="status-text">Checking bot status...</h5>
+            </div>
+        </div>
+
+        <div class="p-5 mb-4 bg-body-tertiary rounded-3">
+            <div class="container-fluid py-5">
+                <h1 class="display-5 fw-bold">Discord Bot for Roblox Group Management</h1>
+                <p class="col-md-10 fs-4">Manage your Roblox group with powerful verification, ranking, and moderation features through Discord.</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Verification System</h5>
+                        <p class="card-text">Securely link Discord users to their Roblox accounts with verification codes.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Rank Management</h5>
+                        <p class="card-text">Check and update user ranks in Roblox groups directly from Discord.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Group Security</h5>
+                        <p class="card-text">Detect users in blacklisted Roblox groups and protect your community.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Ticket System</h5>
+                        <p class="card-text">Create support tickets for user assistance and manage them efficiently.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Moderation Tools</h5>
+                        <p class="card-text">Basic moderation commands with anti-raid, anti-hack, and anti-nuke protection.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card feature-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Nickname Formatting</h5>
+                        <p class="card-text">Automatically format Discord nicknames with Roblox group ranks.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="mb-3">Commands</h3>
+        <div class="accordion mb-4" id="commandAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVerification">
+                        Verification Commands
+                    </button>
+                </h2>
+                <div id="collapseVerification" class="accordion-collapse collapse show" data-bs-parent="#commandAccordion">
+                    <div class="accordion-body">
+                        <table class="table command-table">
+                            <thead>
+                                <tr>
+                                    <th>Command</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/verify [roblox_username]</code></td>
+                                    <td>Verify your Roblox account</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/background [roblox_username]</code></td>
+                                    <td>Check if a user is in blacklisted groups</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/blacklistedgroups [action] [group_id]</code></td>
+                                    <td>Manage blacklisted groups (add, remove, list)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGroup">
+                        Group Commands
+                    </button>
+                </h2>
+                <div id="collapseGroup" class="accordion-collapse collapse" data-bs-parent="#commandAccordion">
+                    <div class="accordion-body">
+                        <table class="table command-table">
+                            <thead>
+                                <tr>
+                                    <th>Command</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/setupid [group_id]</code></td>
+                                    <td>Set up the Roblox group ID for the server</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/ranksetup [group_id]</code></td>
+                                    <td>Alias for setupid</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/setuptoken [token]</code></td>
+                                    <td>Set up the Roblox API token for ranking (DM only!)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/rank [roblox_username] [rank_name]</code></td>
+                                    <td>Rank a user in the Roblox group</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTicket">
+                        Ticket Commands
+                    </button>
+                </h2>
+                <div id="collapseTicket" class="accordion-collapse collapse" data-bs-parent="#commandAccordion">
+                    <div class="accordion-body">
+                        <table class="table command-table">
+                            <thead>
+                                <tr>
+                                    <th>Command</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/ticket</code></td>
+                                    <td>Create a support ticket</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/sendticket [channel]</code></td>
+                                    <td>Send the ticket panel to a channel</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/closeticket</code></td>
+                                    <td>Close a ticket channel</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseModeration">
+                        Moderation Commands
+                    </button>
+                </h2>
+                <div id="collapseModeration" class="accordion-collapse collapse" data-bs-parent="#commandAccordion">
+                    <div class="accordion-body">
+                        <table class="table command-table">
+                            <thead>
+                                <tr>
+                                    <th>Command</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/kick [member] [reason]</code></td>
+                                    <td>Kick a member from the server</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/ban [member] [reason] [delete_days]</code></td>
+                                    <td>Ban a member from the server</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/timeout [member] [duration] [reason]</code></td>
+                                    <td>Timeout a member</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/antiraid [action]</code></td>
+                                    <td>Toggle anti-raid protection</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/setup_roles [verified_role] [mod_role] [admin_role]</code></td>
+                                    <td>Set up roles for the bot</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="pt-3 mt-4 text-body-secondary border-top">
+            &copy; 2025 Roblox Group Manager Bot
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Check bot status
+        function checkStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusContainer = document.getElementById('status-container');
+                    const statusText = document.getElementById('status-text');
+                    const statusSpinner = document.getElementById('status-spinner');
+                    
+                    // Remove all status classes
+                    statusContainer.classList.remove('online', 'offline', 'initializing');
+                    
+                    if (data.status === 'online') {
+                        statusContainer.classList.add('online');
+                        statusText.innerText = 'Bot is online and operational';
+                        statusSpinner.style.display = 'none';
+                        
+                        if (data.server_count) {
+                            statusText.innerText += ` - Serving ${data.server_count} servers`;
+                        }
+                    } else if (data.status === 'initializing') {
+                        statusContainer.classList.add('initializing');
+                        statusText.innerText = 'Bot is initializing...';
+                    } else {
+                        statusContainer.classList.add('offline');
+                        statusText.innerText = 'Bot is offline: ' + data.message;
+                        statusSpinner.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    const statusContainer = document.getElementById('status-container');
+                    const statusText = document.getElementById('status-text');
+                    const statusSpinner = document.getElementById('status-spinner');
+                    
+                    statusContainer.classList.remove('online', 'initializing');
+                    statusContainer.classList.add('offline');
+                    statusText.innerText = 'Error connecting to bot: ' + error;
+                    statusSpinner.style.display = 'none';
+                });
+        }
+        
+        // Check status immediately and every 30 seconds
+        checkStatus();
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>
