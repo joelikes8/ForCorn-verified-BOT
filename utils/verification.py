@@ -134,6 +134,7 @@ class VerificationSystem:
             
             # Default format without group rank
             new_nickname = f"{roblox_username}"
+            rank_name = None
             
             # If group_id is provided, get the user's rank
             if group_id:
@@ -141,6 +142,19 @@ class VerificationSystem:
                 rank_name = await self.roblox_api.get_user_group_rank(user_id, group_id)
                 if rank_name:
                     new_nickname = f"[{rank_name}] {roblox_username}"
+            
+            # Discord has a 32 character nickname limit
+            if len(new_nickname) > 32:
+                # Truncate the username to fit within the limit
+                max_username_length = 32 - (len(rank_name) + 3 if rank_name else 0)  # 3 for [ ]  
+                truncated_username = roblox_username[:max_username_length]
+                
+                if rank_name:
+                    new_nickname = f"[{rank_name}] {truncated_username}"
+                else:
+                    new_nickname = truncated_username
+                
+                logger.info(f"Nickname truncated from '{roblox_username}' to '{truncated_username}' due to Discord's 32 character limit")
             
             # Update the nickname
             try:

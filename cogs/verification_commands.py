@@ -232,4 +232,49 @@ class VerificationCommands(commands.Cog):
         success, message = await self.blacklist_system.remove_blacklisted_group(interaction.guild.id, group_id)
         await interaction.followup.send(message, ephemeral=True)
         logger.info(f"Removed group {group_id} from blacklist by {interaction.user.name}")
+    
+    @app_commands.command(name="update", description="Update your nickname with your current Roblox group rank")
+    async def update(self, interaction: discord.Interaction):
+        """Update your Discord nickname with your current Roblox group rank"""
+        await interaction.response.defer(ephemeral=True)
+        
+        # Check if the server has a group ID configured
+        server_config = self.verification_system.roblox_api.bot.config.get_server_config(interaction.guild.id)
+        group_id = server_config.get("group_id")
+        
+        if not group_id:
+            await interaction.followup.send("This server doesn't have a Roblox group configured. Ask an admin to set one up with `/setupid`.", ephemeral=True)
+            return
+        
+        # Import models for database query
+        from app import app
+        from models import RobloxVerification
+        
+        # Check if the user is verified
+        discord_id = interaction.user.id
+        roblox_username = None
+        
+        with app.app_context():
+            verification = RobloxVerification.query.filter_by(discord_id=discord_id).first()
+            
+            if verification:
+                roblox_username = verification.roblox_username
+        
+        if not roblox_username:
+            await interaction.followup.send("You're not verified yet. Please use `/verify` first.", ephemeral=True)
+            return
+        
+        # Update the user's nickname with current group rank
+        success, result = await self.verification_system.update_nickname(
+            interaction.user,
+            roblox_username,
+            group_id
+        )
+        
+        if success:
+            await interaction.followup.send(f"Your nickname has been updated to: **{result}**", ephemeral=True)
+            logger.info(f"Updated nickname for {interaction.user.name} to {result}")
+        else:
+            await interaction.followup.send(f"Failed to update nickname: {result}", ephemeral=True)
+            logger.error(f"Failed to update nickname for {interaction.user.name}: {result}")
         
