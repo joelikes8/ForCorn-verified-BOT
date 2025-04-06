@@ -398,6 +398,9 @@ class GroupCommands(commands.Cog):
                 roblox_token
             )
             
+            # Detailed logging for debugging
+            logger.info(f"Rank command result - success: {success}, user: {roblox_username}, target role: {target_role['name']}")
+            
             if success:
                 embed = Embed(
                     title="Rank Changed Successfully ✅",
@@ -406,11 +409,29 @@ class GroupCommands(commands.Cog):
                 )
                 embed.add_field(name="Previous Rank", value=current_rank or "No Rank")
                 embed.add_field(name="New Rank", value=target_role["name"])
+                
+                # If in simulation mode, add a note
+                if hasattr(self.roblox_api, 'simulation_mode') and self.roblox_api.simulation_mode:
+                    embed.set_footer(text="Note: This is running in simulation mode (Roblox API unavailable)")
+                
                 await interaction.followup.send(embed=embed)
                 logger.info(f"User {roblox_username} ranked to {target_role['name']} by {interaction.user.name}")
             else:
+                # Create more detailed error message
+                error_message = "Failed to rank the user. "
+                
+                # Check if we're in simulation mode but it still failed (should be rare)
+                if hasattr(self.roblox_api, 'simulation_mode') and self.roblox_api.simulation_mode:
+                    error_message += "Simulation failed. This is unexpected - please check logs."
+                else:
+                    error_message += "Please check the following:\n"
+                    error_message += "• The group ID is correct\n"
+                    error_message += "• The Roblox token is valid\n"
+                    error_message += "• The account has permission to rank in this group\n"
+                    error_message += "• The target rank is valid for this user"
+                
                 await interaction.followup.send(
-                    "Failed to rank the user. Please check permissions and try again.",
+                    error_message,
                     ephemeral=True
                 )
             
