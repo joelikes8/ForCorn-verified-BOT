@@ -22,8 +22,17 @@ class RobloxAPI:
             headers = {}
         
         if token:
+            # Clean up token if it includes the full cookie format
+            if token.startswith(".ROBLOSECURITY="):
+                token = token.replace(".ROBLOSECURITY=", "")
+            
+            # Remove any extra spaces or quotes
+            token = token.strip().strip('"\'')
+            
             headers["Cookie"] = f".ROBLOSECURITY={token}"
-            headers["X-CSRF-TOKEN"] = await self.get_csrf_token(token)
+            csrf_token = await self.get_csrf_token(token)
+            if csrf_token:
+                headers["X-CSRF-TOKEN"] = csrf_token
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -46,6 +55,13 @@ class RobloxAPI:
     
     async def get_csrf_token(self, token):
         """Get CSRF token for Roblox API requests that require authentication"""
+        # Clean up token if it includes the full cookie format
+        if token.startswith(".ROBLOSECURITY="):
+            token = token.replace(".ROBLOSECURITY=", "")
+        
+        # Remove any extra spaces or quotes
+        token = token.strip().strip('"\'')
+        
         headers = {"Cookie": f".ROBLOSECURITY={token}"}
         
         try:
@@ -55,7 +71,11 @@ class RobloxAPI:
                     headers=headers
                 ) as response:
                     if response.status == 403:
-                        return response.headers.get("x-csrf-token")
+                        csrf_token = response.headers.get("x-csrf-token")
+                        if csrf_token:
+                            logger.info("Successfully obtained CSRF token")
+                            return csrf_token
+                    logger.error(f"Failed to get CSRF token: Status {response.status}")
                     return ""
         except Exception as e:
             logger.error(f"Failed to get CSRF token: {e}")
@@ -190,6 +210,13 @@ class RobloxAPI:
         
     async def get_authenticated_user(self, token):
         """Get information about the authenticated user from token"""
+        # Clean up token if it includes the full cookie format
+        if token.startswith(".ROBLOSECURITY="):
+            token = token.replace(".ROBLOSECURITY=", "")
+        
+        # Remove any extra spaces or quotes
+        token = token.strip().strip('"\'')
+        
         url = "https://users.roblox.com/v1/users/authenticated"
         headers = {"Cookie": f".ROBLOSECURITY={token}"}
         
@@ -198,9 +225,13 @@ class RobloxAPI:
                 async with session.get(url, headers=headers) as response:
                     if response.status == 200:
                         user_data = await response.json()
+                        logger.info(f"Successfully authenticated as Roblox user: {user_data.get('name', 'Unknown')}")
                         return user_data
                     else:
                         logger.error(f"Failed to get authenticated user: HTTP {response.status}")
+                        # Log more details for debugging
+                        error_text = await response.text()
+                        logger.error(f"Error response: {error_text}")
                         return None
         except Exception as e:
             logger.error(f"Error getting authenticated user: {e}")

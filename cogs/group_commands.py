@@ -67,10 +67,41 @@ class GroupCommands(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         try:
+            # Clean up token if needed
+            if token.startswith(".ROBLOSECURITY="):
+                token = token.replace(".ROBLOSECURITY=", "")
+            token = token.strip().strip('"\'')
+            
+            # First, check token format
+            if len(token) < 100:  # Typically Roblox tokens are long strings
+                await interaction.followup.send(
+                    "The token format appears to be invalid. Make sure you're providing the entire .ROBLOSECURITY cookie value.\n\n"
+                    "To get your Roblox cookie:\n"
+                    "1. Go to roblox.com and login\n"
+                    "2. Press F12 to open Developer Tools\n"
+                    "3. Go to the 'Application' or 'Storage' tab\n"
+                    "4. Look for 'Cookies' and then 'roblox.com'\n"
+                    "5. Find the .ROBLOSECURITY cookie and copy its value",
+                    ephemeral=True
+                )
+                return
+            
             # Validate the token by trying to get the authenticated user
+            logger.info(f"Attempting to validate Roblox token for user {interaction.user.name}")
             user_data = await self.roblox_api.get_authenticated_user(token)
-            if not user_data or "name" not in user_data:
-                await interaction.followup.send("Invalid token. Please check your cookie and try again.", ephemeral=True)
+            if not user_data:
+                await interaction.followup.send(
+                    "Failed to authenticate with the provided token. The token may be expired or invalid.\n\n"
+                    "Please make sure you've copied the entire token value and try again.",
+                    ephemeral=True
+                )
+                return
+            
+            if "name" not in user_data:
+                await interaction.followup.send(
+                    "Authentication succeeded but could not retrieve your Roblox username. Please try again.",
+                    ephemeral=True
+                )
                 return
             
             # Get the Roblox username
