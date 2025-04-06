@@ -164,23 +164,16 @@ class VerificationCommands(commands.Cog):
         
         logger.info(f"Background check performed by {interaction.user.name} on {roblox_username}")
     
-    @app_commands.command(name="blacklistedgroups", description="Add or list blacklisted Roblox groups")
+    @app_commands.command(name="blacklistedgroups", description="Add a Roblox group to the blacklist")
     @app_commands.describe(
-        action="Action to perform (add, remove, list)",
-        group_id="The Roblox group ID (only needed for add/remove)"
+        group_id="The Roblox group ID to blacklist"
     )
-    @app_commands.choices(action=[
-        app_commands.Choice(name="add", value="add"),
-        app_commands.Choice(name="remove", value="remove"),
-        app_commands.Choice(name="list", value="list")
-    ])
     async def blacklistedgroups(
         self, 
         interaction: discord.Interaction, 
-        action: str,
         group_id: str = None
     ):
-        """Manage blacklisted Roblox groups"""
+        """Add a Roblox group to the blacklist or list all blacklisted groups"""
         await interaction.response.defer(ephemeral=True)
         
         # Check if user has admin permissions
@@ -188,23 +181,13 @@ class VerificationCommands(commands.Cog):
             await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
             return
         
-        if action == "add":
-            if not group_id:
-                await interaction.followup.send("Please provide a group ID to add to the blacklist.", ephemeral=True)
-                return
-            
+        if group_id:
+            # Add the group to the blacklist
             success, message = await self.blacklist_system.add_blacklisted_group(interaction.guild.id, group_id)
             await interaction.followup.send(message, ephemeral=True)
-        
-        elif action == "remove":
-            if not group_id:
-                await interaction.followup.send("Please provide a group ID to remove from the blacklist.", ephemeral=True)
-                return
-            
-            success, message = await self.blacklist_system.remove_blacklisted_group(interaction.guild.id, group_id)
-            await interaction.followup.send(message, ephemeral=True)
-        
-        elif action == "list":
+            logger.info(f"Added group {group_id} to blacklist by {interaction.user.name}")
+        else:
+            # No group ID provided, show the list of blacklisted groups
             groups, message = await self.blacklist_system.list_blacklisted_groups(interaction.guild.id)
             
             if not groups:
@@ -221,10 +204,32 @@ class VerificationCommands(commands.Cog):
             for i, group in enumerate(groups):
                 embed.add_field(
                     name=f"{i+1}. {group['name']}",
-                    value=f"Group ID: {group['id']}",
+                    value=f"Group ID: {group['id']} (use `/removeblacklist {group['id']}` to remove)",
                     inline=False
                 )
             
             await interaction.followup.send(embed=embed, ephemeral=True)
+            logger.info(f"Listed blacklisted groups for {interaction.user.name}")
+            
+    @app_commands.command(name="removeblacklist", description="Remove a Roblox group from the blacklist")
+    @app_commands.describe(
+        group_id="The Roblox group ID to remove from the blacklist"
+    )
+    async def removeblacklist(
+        self, 
+        interaction: discord.Interaction, 
+        group_id: str
+    ):
+        """Remove a Roblox group from the blacklist"""
+        await interaction.response.defer(ephemeral=True)
         
-        logger.info(f"Blacklisted groups command ({action}) executed by {interaction.user.name}")
+        # Check if user has admin permissions
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+            return
+        
+        # Remove the group from the blacklist
+        success, message = await self.blacklist_system.remove_blacklisted_group(interaction.guild.id, group_id)
+        await interaction.followup.send(message, ephemeral=True)
+        logger.info(f"Removed group {group_id} from blacklist by {interaction.user.name}")
+        
