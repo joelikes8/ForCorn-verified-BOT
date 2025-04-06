@@ -20,17 +20,49 @@ class GroupCommands(commands.Cog):
         """Set up the Roblox group ID for the server"""
         await interaction.response.defer(ephemeral=True)
         
-        # Check if user has admin permissions
-        if not interaction.user.guild_permissions.administrator:
+        # Check if this is a guild interaction and user has proper permissions
+        if not interaction.guild:
+            await interaction.followup.send("This command can only be used in a server.", ephemeral=True)
+            return
+            
+        # Get the member object instead of just the user
+        member = interaction.guild.get_member(interaction.user.id)
+        if not member:
+            try:
+                member = await interaction.guild.fetch_member(interaction.user.id)
+            except discord.errors.NotFound:
+                await interaction.followup.send("Could not verify your server permissions.", ephemeral=True)
+                return
+                
+        # Check admin permissions with the member object
+        if not member.guild_permissions.administrator:
             await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
             return
         
         try:
+            # Save in database first to establish connection between group and guild
+            from app import app, db
+            from models import Guild
+            
+            with app.app_context():
+                guild_record = Guild.query.get(interaction.guild.id)
+                if guild_record:
+                    guild_record.group_id = group_id
+                    logger.info(f"Updated group ID for guild {interaction.guild.id} to {group_id}")
+                else:
+                    new_guild = Guild(id=interaction.guild.id, group_id=group_id)
+                    db.session.add(new_guild)
+                    logger.info(f"Created new guild record with group ID {group_id}")
+                db.session.commit()
+            
             # Validate group ID
             group_info = await self.roblox_api.get_group_info(group_id)
             
             if not group_info:
-                await interaction.followup.send("Invalid group ID. Please check the ID and try again.", ephemeral=True)
+                # Try an alternative API to get basic group info
+                await interaction.followup.send("Could not verify group details from Roblox API, but the ID has been saved.", ephemeral=True)
+                # Still update the server config
+                self.bot.config.update_server_config(interaction.guild.id, "group_id", group_id)
                 return
             
             # Update server config
@@ -43,9 +75,31 @@ class GroupCommands(commands.Cog):
                 color=Color.green()
             )
             
-            embed.add_field(name="Group Name", value=group_info["name"])
+            embed.add_field(name="Group Name", value=group_info.get("name", "Unknown"))
             embed.add_field(name="Group ID", value=group_id)
             embed.add_field(name="Member Count", value=str(group_info.get("memberCount", "Unknown")), inline=False)
+            
+            # Add a reminder to set up the token if not already set
+            guild_id = interaction.guild.id
+            from app import app
+            from models import RobloxToken
+            
+            token_exists = False
+            with app.app_context():
+                # Check if a token exists for this guild
+                token_exists = RobloxToken.query.filter_by(discord_id=guild_id).first() is not None
+                
+                # If not found for guild, check for owner
+                if not token_exists:
+                    owner_id = interaction.guild.owner_id
+                    token_exists = RobloxToken.query.filter_by(discord_id=owner_id).first() is not None
+            
+            if not token_exists:
+                embed.add_field(
+                    name="Next Step: Set Up Token ⚠️",
+                    value="For ranking to work, the server owner needs to set up a Roblox API token using the `/setuptoken` command in DMs.",
+                    inline=False
+                )
             
             await interaction.followup.send(embed=embed, ephemeral=True)
             logger.info(f"Group ID set to {group_id} by {interaction.user.name} (ID: {interaction.user.id})")
@@ -211,8 +265,23 @@ class GroupCommands(commands.Cog):
         """Rank a user in the Roblox group"""
         await interaction.response.defer(ephemeral=False)  # This can be public
         
+        # Check if interaction is in a guild
+        if not interaction.guild:
+            await interaction.followup.send("This command can only be used in a server.", ephemeral=True)
+            return
+            
         # Check if user has permission to rank
-        if not interaction.user.guild_permissions.manage_roles and rank_name:
+        # Get the member object instead of just the user
+        member = interaction.guild.get_member(interaction.user.id)
+        if not member:
+            try:
+                member = await interaction.guild.fetch_member(interaction.user.id)
+            except discord.errors.NotFound:
+                await interaction.followup.send("Could not verify your server permissions.", ephemeral=True)
+                return
+                
+        # Now check permissions with the member object
+        if rank_name and not member.guild_permissions.manage_roles:
             await interaction.followup.send("You need manage roles permission to rank users.", ephemeral=True)
             return
         

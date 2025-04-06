@@ -258,10 +258,15 @@ class RobloxAPI:
         
         return False
     
-    async def rank_user_in_group(self, user_id, group_id, rank_id, token):
-        """Change a user's rank in a group"""
+    async def rank_user_in_group(self, user_id, group_id, rank_id, token, attempt=1):
+        """Change a user's rank in a group with fallback to alternative endpoints"""
+        # Primary API endpoint
         url = f"{self.groups_base_url}/v1/groups/{group_id}/users/{user_id}"
         data = {"roleId": rank_id}
+        
+        # Alternative URLs for backup attempts
+        alt_url_1 = f"https://groups.roblox.com/v1/groups/{group_id}/users/{user_id}/role"
+        alt_url_2 = f"https://www.roblox.com/groups/api/change-member-rank"
         
         # Clean up token if needed
         if token.startswith(".ROBLOSECURITY="):
@@ -272,34 +277,69 @@ class RobloxAPI:
         csrf_token = await self.get_csrf_token(token)
         if not csrf_token:
             logger.error(f"Failed to get CSRF token for ranking user {user_id} in group {group_id}")
+            
+            # If this is the first attempt, try again with a different endpoint
+            if attempt < 3:
+                logger.info(f"Retrying with alternative method (attempt {attempt + 1})")
+                return await self.rank_user_in_group(user_id, group_id, rank_id, token, attempt + 1)
             return False
+        
+        # Use different URLs and methods based on attempt number
+        if attempt == 1:
+            # Primary method: PATCH to groups API
+            current_url = url
+            method = "PATCH"
+            current_data = data
+        elif attempt == 2:
+            # Alternative 1: POST to role endpoint
+            current_url = alt_url_1
+            method = "POST" 
+            current_data = {"roleId": rank_id}
+        else:
+            # Alternative 2: POST to legacy endpoint
+            current_url = alt_url_2
+            method = "POST"
+            current_data = {
+                "groupId": group_id,
+                "userId": user_id,
+                "roleSetId": rank_id
+            }
         
         headers = {
             "Cookie": f".ROBLOSECURITY={token}",
             "X-CSRF-TOKEN": csrf_token,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "Roblox/RankingBot (Discord Bot)"
         }
         
         # Make the request manually to get more detailed error information
         try:
+            logger.info(f"Attempting to rank user with method {attempt} to URL: {current_url}")
             async with aiohttp.ClientSession() as session:
-                async with session.patch(
-                    url,
-                    json=data,
+                async with session.request(
+                    method=method,
+                    url=current_url,
+                    json=current_data,
                     headers=headers,
-                    timeout=15
+                    timeout=20  # Longer timeout for ranking
                 ) as response:
                     # Log detailed response information
                     response_text = await response.text()
                     
+                    # Check if the request was successful
                     if response.status == 200:
-                        logger.info(f"Successfully ranked user {user_id} to role {rank_id} in group {group_id}")
+                        logger.info(f"Successfully ranked user {user_id} to role {rank_id} in group {group_id} (method {attempt})")
                         return True
                     else:
                         logger.error(f"Failed to rank user {user_id} in group {group_id}. Status: {response.status}")
                         logger.error(f"Response body: {response_text}")
                         
-                        # Check for common errors
+                        # If this is the first or second attempt and we get an error, try the next method
+                        if attempt < 3:
+                            logger.info(f"Retrying with alternative method (attempt {attempt + 1})")
+                            return await self.rank_user_in_group(user_id, group_id, rank_id, token, attempt + 1)
+                        
+                        # Log specific error details on final attempt
                         if response.status == 401:
                             logger.error("Authentication failed - token may be invalid or expired")
                         elif response.status == 403:
@@ -309,13 +349,25 @@ class RobloxAPI:
                         
                         return False
         except aiohttp.ClientConnectorError as e:
-            logger.error(f"Connection error while ranking user: {e}")
+            logger.error(f"Connection error while ranking user (method {attempt}): {e}")
+            # Try next method if available
+            if attempt < 3:
+                logger.info(f"Retrying with alternative method due to connection error (attempt {attempt + 1})")
+                return await self.rank_user_in_group(user_id, group_id, rank_id, token, attempt + 1)
             return False
         except aiohttp.ClientError as e:
-            logger.error(f"Client error while ranking user: {e}")
+            logger.error(f"Client error while ranking user (method {attempt}): {e}")
+            # Try next method if available
+            if attempt < 3:
+                logger.info(f"Retrying with alternative method due to client error (attempt {attempt + 1})")
+                return await self.rank_user_in_group(user_id, group_id, rank_id, token, attempt + 1)
             return False
         except Exception as e:
-            logger.error(f"Error ranking user {user_id} in group {group_id}: {e}")
+            logger.error(f"Error ranking user {user_id} in group {group_id} (method {attempt}): {e}")
+            # Try next method if available
+            if attempt < 3:
+                logger.info(f"Retrying with alternative method due to exception (attempt {attempt + 1})")
+                return await self.rank_user_in_group(user_id, group_id, rank_id, token, attempt + 1)
             return False
     
     async def get_group_roles(self, group_id):
