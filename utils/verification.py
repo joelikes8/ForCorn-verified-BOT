@@ -19,7 +19,6 @@ VERIFICATION_GIFS = [
 class VerificationSystem:
     def __init__(self, roblox_api):
         self.roblox_api = roblox_api
-        self.verified_users = {}  # user_id: roblox_id
     
     def generate_verification_code(self, length=6):
         """Generate a random verification code"""
@@ -69,6 +68,10 @@ class VerificationSystem:
     async def verify_user(self, member, roblox_username, code):
         """Check if the verification code is in the user's Roblox profile"""
         try:
+            # Import the database models here to avoid circular imports
+            from app import db
+            from models import RobloxVerification
+            
             # Get user info and check if the code is in their profile
             user_id = await self.roblox_api.get_user_id_from_username(roblox_username)
             if not user_id:
@@ -78,8 +81,24 @@ class VerificationSystem:
             description = await self.roblox_api.get_user_description(user_id)
             
             if code in description:
-                # Store the verification
-                self.verified_users[member.id] = user_id
+                # Store the verification in the database
+                existing_verification = RobloxVerification.query.filter_by(discord_id=member.id).first()
+                
+                if existing_verification:
+                    # Update existing record
+                    existing_verification.roblox_id = user_id
+                    existing_verification.roblox_username = roblox_username
+                else:
+                    # Create new record
+                    new_verification = RobloxVerification(
+                        discord_id=member.id,
+                        roblox_id=user_id,
+                        roblox_username=roblox_username
+                    )
+                    db.session.add(new_verification)
+                
+                db.session.commit()
+                logger.info(f"User {member.id} verified as Roblox user {roblox_username} (ID: {user_id})")
                 return True, user_id
             else:
                 return False, "Verification code not found in your profile. Please make sure you added it correctly."
@@ -91,14 +110,19 @@ class VerificationSystem:
     async def update_nickname(self, member, roblox_username, group_id=None):
         """Update the nickname of a member based on their Roblox info"""
         try:
-            # Get the Roblox user ID if not verified already
-            if member.id not in self.verified_users:
+            # Import the database models here to avoid circular imports
+            from models import RobloxVerification
+            
+            # Get the Roblox user ID from database if verified, else from username
+            verification = RobloxVerification.query.filter_by(discord_id=member.id).first()
+            
+            if verification:
+                user_id = verification.roblox_id
+                roblox_username = verification.roblox_username
+            else:
                 user_id = await self.roblox_api.get_user_id_from_username(roblox_username)
                 if not user_id:
                     return False, "Could not find that Roblox username."
-                self.verified_users[member.id] = user_id
-            else:
-                user_id = self.verified_users[member.id]
             
             # Default format without group rank
             new_nickname = f"{roblox_username}"

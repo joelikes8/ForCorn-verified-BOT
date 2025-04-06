@@ -288,6 +288,13 @@
                         if (data.server_count) {
                             statusText.innerText += ` - Serving ${data.server_count} servers`;
                         }
+                        
+                        if (data.using_database) {
+                            statusText.innerText += ` (PostgreSQL Database Active)`;
+                        }
+                        if (data.using_database) {
+                            statusText.innerText += ` (PostgreSQL Database Active)`;
+                        }
                     } else if (data.status === 'initializing') {
                         statusContainer.classList.add('initializing');
                         statusText.innerText = 'Bot is initializing...';

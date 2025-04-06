@@ -10,7 +10,10 @@ from cogs.group_commands import GroupCommands
 from cogs.ticket_commands import TicketCommands
 from cogs.moderation_commands import ModerationCommands
 from config import Config
-from app import app
+from app import app, db
+
+# Import models to ensure they're registered with SQLAlchemy
+import models
 
 # Configure logging
 logging.basicConfig(

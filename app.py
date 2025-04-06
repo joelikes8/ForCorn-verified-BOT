@@ -1,14 +1,43 @@
 import os
 import json
 from flask import Flask, render_template, jsonify, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# Initialize database
+class Base(DeclarativeBase):
+    pass
+
+db = SQLAlchemy(model_class=Base)
+
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "default-secret-key")
+
+# Configure database
+database_url = os.environ.get("DATABASE_URL")
+if not database_url:
+    print("WARNING: DATABASE_URL environment variable not set. Using SQLite instead.")
+    database_url = "sqlite:///bot.db"
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+
+# Initialize app with extensions
+db.init_app(app)
+
+# Create tables
+with app.app_context():
+    # Import models here to avoid circular imports
+    import models
+    db.create_all()
 
 # Home route
 @app.route('/')
@@ -19,24 +48,24 @@ def index():
 @app.route('/api/status')
 def status():
     try:
-        # Check if data directory exists as a simple check
-        if os.path.exists('data'):
-            # Count number of configs if any
-            config_count = 0
-            if os.path.exists('data/server_configs.json'):
-                with open('data/server_configs.json', 'r') as f:
-                    config_data = json.load(f)
-                    config_count = len(config_data)
-            
+        # Import models here to avoid circular imports
+        from models import Guild
+        
+        # Count number of servers in the database
+        guild_count = Guild.query.count()
+        
+        if guild_count > 0 or os.path.exists('data/server_configs.json'):
             return jsonify({
                 'status': 'online',
                 'message': 'Bot is running',
-                'server_count': config_count
+                'server_count': guild_count,
+                'using_database': True
             })
         else:
             return jsonify({
                 'status': 'initializing',
-                'message': 'Bot is starting up'
+                'message': 'Bot is starting up',
+                'using_database': True
             })
     except Exception as e:
         return jsonify({
