@@ -3,7 +3,9 @@ from discord import app_commands
 from discord.ext import commands
 from discord import Embed, Color
 import logging
+from datetime import datetime
 from utils.roblox_api import RobloxAPI
+from app import db
 
 logger = logging.getLogger(__name__)
 
@@ -109,42 +111,87 @@ class GroupCommands(commands.Cog):
             roblox_display_name = user_data.get("displayName", roblox_username)
             roblox_id = user_data["id"]
             
-            # Store the token
+            # Store the token both for the user and associated guild
+            from app import app
+            from models import RobloxToken
+            
+            try:
+                with app.app_context():
+                    # First store for the user who ran the command
+                    user_token = RobloxToken.query.filter_by(discord_id=interaction.user.id).first()
+                    if user_token:
+                        user_token.encrypted_token = token
+                        user_token.updated_at = datetime.utcnow()
+                        logger.info(f"Updated token for user {interaction.user.id}")
+                    else:
+                        new_token = RobloxToken(discord_id=interaction.user.id, encrypted_token=token)
+                        db.session.add(new_token)
+                        logger.info(f"Added new token for user {interaction.user.id}")
+                    
+                    db.session.commit()
+                    
+                # Also use the config method for any guilds they own
+                for guild in self.bot.guilds:
+                    if interaction.user.id == guild.owner_id:
+                        self.bot.config.update_server_config(guild.id, "roblox_token", token)
+                        logger.info(f"Stored token for guild {guild.id} owner {interaction.user.id}")
+                        
+                        # Also store directly for the guild ID
+                        with app.app_context():
+                            guild_token = RobloxToken.query.filter_by(discord_id=guild.id).first()
+                            if guild_token:
+                                guild_token.encrypted_token = token
+                                guild_token.updated_at = datetime.utcnow()
+                            else:
+                                new_guild_token = RobloxToken(discord_id=guild.id, encrypted_token=token)
+                                db.session.add(new_guild_token)
+                            
+                            db.session.commit()
+                            logger.info(f"Stored token directly with guild ID {guild.id}")
+            except Exception as e:
+                logger.error(f"Error storing Roblox token: {e}")
+            
+            # Create success embed
+            embed = Embed(
+                title="Token Setup Successful ✅",
+                description=f"Successfully logged in as **{roblox_username}** (Display Name: {roblox_display_name}).",
+                color=Color.green()
+            )
+            
+            # Get the user's avatar
+            avatar_url = await self.roblox_api.get_user_thumbnail(roblox_id)
+            if avatar_url:
+                embed.set_thumbnail(url=avatar_url)
+            
+            embed.add_field(
+                name="Account Info",
+                value=f"**Username:** {roblox_username}\n**User ID:** {roblox_id}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="Security Notice",
+                value="Your token has been securely stored. Never share your token with anyone else.",
+                inline=False
+            )
+            
+            # Check if they are a guild owner before setting up the token
+            is_guild_owner = False
             for guild in self.bot.guilds:
                 if interaction.user.id == guild.owner_id:
-                    self.bot.config.update_server_config(guild.id, "roblox_token", token)
+                    is_guild_owner = True
+                    break
                     
-                    embed = Embed(
-                        title="Token Setup Successful ✅",
-                        description=f"Successfully logged in as **{roblox_username}** (Display Name: {roblox_display_name}).",
-                        color=Color.green()
-                    )
-                    
-                    # Get the user's avatar
-                    avatar_url = await self.roblox_api.get_user_thumbnail(roblox_id)
-                    if avatar_url:
-                        embed.set_thumbnail(url=avatar_url)
-                    
-                    embed.add_field(
-                        name="Account Info",
-                        value=f"**Username:** {roblox_username}\n**User ID:** {roblox_id}",
-                        inline=False
-                    )
-                    
-                    embed.add_field(
-                        name="Security Notice",
-                        value="Your token has been securely stored. Never share your token with anyone else.",
-                        inline=False
-                    )
-                    
-                    await interaction.followup.send(embed=embed, ephemeral=True)
-                    logger.info(f"Roblox token set by {interaction.user.name} (ID: {interaction.user.id}) for Roblox account: {roblox_username}")
-                    return
-            
-            await interaction.followup.send(
-                "You need to be the owner of at least one server where the bot is present to use this command.",
-                ephemeral=True
-            )
+            if not is_guild_owner:
+                await interaction.followup.send(
+                    "You need to be the owner of at least one server where the bot is present to use this command.",
+                    ephemeral=True
+                )
+                return
+                
+            # If we got here, they are a guild owner and token setup was successful
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            logger.info(f"Roblox token set by {interaction.user.name} (ID: {interaction.user.id}) for Roblox account: {roblox_username}")
             
         except Exception as e:
             logger.error(f"Error setting up token: {e}")
@@ -217,16 +264,38 @@ class GroupCommands(commands.Cog):
             # If rank name is provided, change the rank
             # Get token from database
             from app import app
-            from models import RobloxToken
+            from models import RobloxToken, Guild
             
-            # Get guild owner ID
-            owner_id = interaction.guild.owner_id
+            # First try with guild ID
+            guild_id = interaction.guild.id
             
             try:
                 with app.app_context():
-                    token_entry = RobloxToken.query.filter_by(discord_id=owner_id).first()
+                    # Look for tokens associated with any user who has set up a token for this guild
+                    token_entry = None
+                    
+                    # First check all tokens in the database
+                    all_tokens = RobloxToken.query.all()
+                    for token in all_tokens:
+                        logger.info(f"Found token for user ID: {token.discord_id}")
+                    
+                    # Try guild ID first
+                    token_entry = RobloxToken.query.filter_by(discord_id=guild_id).first()
+                    
+                    # If not found, try the owner ID
+                    if not token_entry:
+                        owner_id = interaction.guild.owner_id
+                        token_entry = RobloxToken.query.filter_by(discord_id=owner_id).first()
+                        logger.info(f"Checked owner ID {owner_id} for token: {'Found' if token_entry else 'Not found'}")
+                    
+                    # If still not found, check if we have a token linked to this guild
+                    if not token_entry:
+                        guild_data = Guild.query.get(guild_id)
+                        if guild_data:
+                            logger.info(f"Guild data found for {guild_id}, group_id: {guild_data.group_id}")
+                    
                     roblox_token = token_entry.encrypted_token if token_entry else None
-                    logger.info(f"Retrieved Roblox token for guild owner {owner_id}: {'Found' if token_entry else 'Not found'}")
+                    logger.info(f"Retrieved Roblox token for guild {guild_id}: {'Found' if token_entry else 'Not found'}")
             except Exception as e:
                 logger.error(f"Error retrieving Roblox token: {e}")
                 roblox_token = None
