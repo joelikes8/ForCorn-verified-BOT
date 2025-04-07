@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.libsodium
     pkgs.rustc
     pkgs.pkg-config
     pkgs.libxcrypt

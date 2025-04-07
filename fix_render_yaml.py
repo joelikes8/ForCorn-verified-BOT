@@ -1,4 +1,6 @@
-services:
+#!/usr/bin/env python3
+
+content = """services:
   - type: web
     name: forcorn-bot
     env: python
@@ -25,3 +27,9 @@ databases:
     databaseName: forcornbot
     user: forcorn
     plan: free
+"""
+
+with open('render.yaml', 'w') as f:
+    f.write(content)
+
+print("render.yaml updated successfully!")

@@ -2,6 +2,7 @@ import os
 import json
 import threading
 import subprocess
+import sys
 from flask import Flask, render_template, jsonify, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -115,4 +116,7 @@ if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     # Print the port we're binding to - helpful for debugging
     print(f"Starting server on port {port}")
+    print(f"Environment variables: PORT={os.environ.get('PORT')}", file=sys.stderr)
+    print(f"Using host: 0.0.0.0 and port: {port}", file=sys.stderr)
+    # Ensure we're binding to 0.0.0.0 to make the app accessible
     app.run(host='0.0.0.0', port=port, debug=True)

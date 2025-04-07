@@ -10,3 +10,4 @@ sqlalchemy
 cryptography
 Jinja2
 Werkzeug
+pynacl
