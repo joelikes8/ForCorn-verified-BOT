@@ -60,11 +60,12 @@ class RobloxGroupBot(commands.Bot):
         )
 
 async def main():
-    # Get token from environment variable
+    # Get token from environment variable or use the provided one
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        logger.error("No token found. Please set the DISCORD_TOKEN environment variable.")
-        return
+        # Direct token input (replace this with your actual token)
+        token = 'PASTE IN YOUR DISCORD TOKEN HERE'
+        logger.info("Using hardcoded token.")
     
     # Create and start the bot
     bot = RobloxGroupBot()
@@ -73,7 +74,7 @@ async def main():
     try:
         await bot.start(token)
     except discord.errors.LoginFailure:
-        logger.error("Invalid token. Please check your DISCORD_TOKEN.")
+        logger.error("Invalid token. Please check your Discord token.")
     except Exception as e:
         logger.error(f"An error occurred: {e}")
     finally:
