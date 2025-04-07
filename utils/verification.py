@@ -19,6 +19,67 @@ VERIFICATION_GIFS = [
 class VerificationSystem:
     def __init__(self, roblox_api):
         self.roblox_api = roblox_api
+        # Mapping of rank names to standardized codes
+        self.rank_codes = {
+            # Military ranks (general structure)
+            "Owner": "OWN",
+            "Co-Owner": "COWN",
+            "President": "PRES",
+            "Vice President": "VPRES",
+            "Commander in Chief": "CIC",
+            "Commander": "CMD",
+            "Chief of Defence Staff": "CDS",
+            "Chief of Staff": "COS",
+            "Executive Officer": "XO",
+            "Director": "DIR",
+            "General": "GEN",
+            "Lieutenant General": "LTGEN",
+            "Major General": "MJGEN",
+            "Brigadier General": "BGEN",
+            "Colonel": "COL",
+            "Lieutenant Colonel": "LTCOL",
+            "Major": "MAJ",
+            "Captain": "CAPT",
+            "Lieutenant": "LT",
+            "Second Lieutenant": "2LT",
+            "Officer Cadet": "OCDT",
+            "Warrant Officer": "WO",
+            "Staff Sergeant": "SSGT",
+            "Sergeant": "SGT",
+            "Corporal": "CPL",
+            "Lance Corporal": "LCPL",
+            "Private First Class": "PFC",
+            "Private": "PVT",
+            "Recruit": "RCT",
+            # Admin ranks
+            "Administrator": "ADMN",
+            "Moderator": "MOD",
+            "Trial Moderator": "TMOD",
+            "Developer": "DEV",
+            "Builder": "BLDR",
+            # Default fallback for any other ranks
+            "Member": "MBR"
+        }
+    
+    def get_rank_code(self, rank_name):
+        """Convert a rank name to a standardized code"""
+        if not rank_name:
+            return None
+            
+        # Check for exact match first
+        if rank_name in self.rank_codes:
+            return self.rank_codes[rank_name]
+        
+        # Check for partial matches
+        for known_rank, code in self.rank_codes.items():
+            if known_rank.lower() in rank_name.lower() or rank_name.lower() in known_rank.lower():
+                return code
+        
+        # If no match found, use first 3-4 characters of the rank name as a code
+        if len(rank_name) >= 4:
+            return rank_name[:4].upper()
+        else:
+            return rank_name.upper()
     
     def generate_verification_code(self, length=6):
         """Generate a random verification code"""
@@ -141,16 +202,21 @@ class VerificationSystem:
                 # Get group rank
                 rank_name = await self.roblox_api.get_user_group_rank(user_id, group_id)
                 if rank_name:
-                    new_nickname = f"[{rank_name}] {roblox_username}"
+                    # Convert rank name to standardized code
+                    rank_code = self.get_rank_code(rank_name)
+                    new_nickname = f"[{rank_code}] {roblox_username}"
             
             # Discord has a 32 character nickname limit
             if len(new_nickname) > 32:
                 # Truncate the username to fit within the limit
-                max_username_length = 32 - (len(rank_name) + 3 if rank_name else 0)  # 3 for [ ]  
+                rank_code = self.get_rank_code(rank_name) if rank_name else None
+                code_length = len(rank_code) + 3 if rank_code else 0  # 3 for [ ]
+                
+                max_username_length = 32 - code_length
                 truncated_username = roblox_username[:max_username_length]
                 
-                if rank_name:
-                    new_nickname = f"[{rank_name}] {truncated_username}"
+                if rank_code:
+                    new_nickname = f"[{rank_code}] {truncated_username}"
                 else:
                     new_nickname = truncated_username
                 
