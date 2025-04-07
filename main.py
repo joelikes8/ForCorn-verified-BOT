@@ -63,8 +63,16 @@ def main():
     # Create the bot
     bot = RobloxGroupBot()
     
-    # Run the bot with direct token
-    bot.run('PASTE_YOUR_DISCORD_TOKEN_HERE')
+    # Get token from environment variable
+    token = os.environ.get('DISCORD_TOKEN')
+    
+    if not token:
+        logger.error("No Discord token found. Please set the DISCORD_TOKEN environment variable.")
+        logger.info("You can set it in the .env file or export it in your terminal.")
+        return
+        
+    # Run the bot with the token
+    bot.run(token)
 
 if __name__ == "__main__":
     main()
