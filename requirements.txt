@@ -7,3 +7,6 @@ gunicorn
 psycopg2-binary
 python-dotenv
 sqlalchemy
+cryptography
+Jinja2
+Werkzeug

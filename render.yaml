@@ -2,7 +2,7 @@ services:
   - type: web
     name: forcorn-bot
     env: python
-    buildCommand: pip install -r dependencies.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn webapp:app --bind 0.0.0.0:$PORT --log-level debug
     envVars:
       - key: DISCORD_TOKEN
