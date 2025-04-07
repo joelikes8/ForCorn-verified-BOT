@@ -212,4 +212,6 @@ if os.environ.get("START_BOT", "true").lower() == "true":
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
+    # Print the port we're binding to - helpful for debugging
+    print(f"Starting server on port {port}")
     app.run(host='0.0.0.0', port=port)

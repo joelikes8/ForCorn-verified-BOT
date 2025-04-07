@@ -296,12 +296,6 @@
                         if (data.using_database) {
                             statusText.innerText += ` (PostgreSQL Database Active)`;
                         }
-                        if (data.using_database) {
-                            statusText.innerText += ` (PostgreSQL Database Active)`;
-                        }
-                    } else if (data.status === 'initializing') {
-                        statusContainer.classList.add('initializing');
-                        statusText.innerText = 'Bot is initializing...';
                     } else {
                         statusContainer.classList.add('offline');
                         statusText.innerText = 'Bot is offline: ' + data.message;

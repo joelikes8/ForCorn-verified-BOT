@@ -24,6 +24,10 @@ if not database_url:
     print("WARNING: DATABASE_URL environment variable not set. Using SQLite instead.")
     database_url = "sqlite:///bot.db"
 
+# Handle Render.com's PostgreSQL URL format
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
