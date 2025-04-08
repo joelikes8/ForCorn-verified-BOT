@@ -24,10 +24,16 @@ os.environ["NO_WEB_SERVER"] = "true"
 
 logger.info("Starting standalone Discord bot...")
 
-# Run the standalone bot
-try:
-    import standalone_discord_bot
-    standalone_discord_bot.main()
-except Exception as e:
-    logger.error(f"Error running bot: {e}")
-    sys.exit(1)
+# Define main function for import compatibility
+def main():
+    """Main function to run the bot"""
+    try:
+        import standalone_discord_bot
+        standalone_discord_bot.main()
+    except Exception as e:
+        logger.error(f"Error running bot: {e}")
+        sys.exit(1)
+
+# Run the standalone bot when executed directly
+if __name__ == "__main__":
+    main()
