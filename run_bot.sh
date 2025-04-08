@@ -1,0 +1,1 @@
+python standalone_discord_bot.py
