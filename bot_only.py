@@ -9,7 +9,8 @@ It's designed to be used in a dedicated workflow for the bot.
 import os
 import sys
 import logging
-from dotenv import load_dotenv
+import importlib.util
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -19,30 +20,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bot_only")
 
-# Load environment variables
-try:
-    load_dotenv()
-    logger.info("Environment variables loaded from .env file")
-except Exception as e:
-    logger.warning(f"Could not load .env file: {e}")
+# Force bot-only environment variables
+os.environ["DISCORD_BOT_WORKFLOW"] = "true"
+os.environ["NO_WEB_SERVER"] = "true"
+os.environ["BOT_ONLY_MODE"] = "true"
 
-# Check for Discord token
+# Print conspicuous header
+print("="*80)
+print("DISCORD BOT ONLY MODE - NO WEB INTERFACE")
+print("This script runs the standalone Discord bot with no web components")
+print("="*80)
+
+# Check if the token is available
 if not os.environ.get("DISCORD_TOKEN"):
-    logger.critical("DISCORD_TOKEN environment variable is missing")
+    logger.critical("DISCORD_TOKEN not found in environment variables")
+    logger.critical("Please set the DISCORD_TOKEN in Secrets tab or .env file")
     sys.exit(1)
 
-# Import the Discord bot main function
-try:
-    from discord_main import main
+def main():
+    """Main function to run the Discord bot workflow"""
+    logger.info("Starting Discord bot in bot-only mode")
     
-    # Run the Discord bot
-    logger.info("Starting Discord bot...")
+    # Run the standalone bot directly via subprocess
+    # This approach avoids any module import conflicts
+    try:
+        subprocess.run([sys.executable, "standalone_discord_bot.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        logger.critical(f"Bot process exited with error code {e.returncode}")
+        sys.exit(e.returncode)
+    except Exception as e:
+        logger.critical(f"Failed to start bot: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
     main()
-except ImportError as e:
-    logger.critical(f"Could not import from discord_main.py: {e}")
-    sys.exit(1)
-except Exception as e:
-    logger.critical(f"Error running Discord bot: {e}")
-    import traceback
-    logger.critical(traceback.format_exc())
-    sys.exit(1)

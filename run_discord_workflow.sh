@@ -1,8 +1,10 @@
 #!/bin/bash
-# Discord Bot Workflow Runner - ISOLATED
-# This script runs a completely isolated Discord bot
+# Run Discord Bot Workflow
+# This script is specifically designed for the discord_bot workflow
 
-echo "Starting Discord bot in isolated workflow..."
+echo "========================================================="
+echo "         DISCORD BOT WORKFLOW - NO WEB SERVER            "
+echo "========================================================="
 
-# Call the actual start script
-bash start_discord_bot_workflow.sh
+# Run the specialized Discord bot runner script
+python discord_bot_runner.py

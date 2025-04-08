@@ -1,10 +1,12 @@
 """
 This file redirects to the webapp module and provides enhanced error handling.
 If the main webapp fails due to database issues, it will use a simpler version.
+When run in Discord bot workflow mode, it starts the standalone Discord bot.
 """
 import os
 import sys
 import logging
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -13,6 +15,30 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("main")
+
+# Check if we're in Discord bot workflow mode first
+if os.environ.get("DISCORD_BOT_WORKFLOW") or os.environ.get("BOT_ONLY_MODE"):
+    logger.info("Detected DISCORD_BOT_WORKFLOW or BOT_ONLY_MODE - running standalone Discord bot")
+    
+    # Set environment variable to ensure it's picked up by child processes
+    os.environ["DISCORD_BOT_WORKFLOW"] = "true"
+    os.environ["NO_WEB_SERVER"] = "true"
+    
+    try:
+        # Import and run the standalone bot directly
+        logger.info("Starting standalone Discord bot...")
+        from standalone_discord_bot import main as run_bot
+        run_bot()
+        sys.exit(0)  # Exit after bot is done
+    except ImportError:
+        # If we can't directly import, try running it as a separate process
+        logger.warning("Could not import standalone_discord_bot directly, trying subprocess")
+        try:
+            subprocess.run(["python", "standalone_discord_bot.py"], check=True)
+            sys.exit(0)  # Exit after process is done
+        except Exception as bot_error:
+            logger.critical(f"Failed to start standalone bot: {bot_error}")
+            sys.exit(1)  # Exit with error code
 
 # First, try to import from the normal webapp
 try:
