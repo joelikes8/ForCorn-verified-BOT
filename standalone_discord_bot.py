@@ -15,6 +15,8 @@ import sys
 import logging
 import traceback
 import threading
+import random
+import string
 from dotenv import load_dotenv
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -125,6 +127,91 @@ async def ping(interaction: discord.Interaction):
         f"Pong! Bot is online with a latency of {round(bot.latency * 1000)}ms"
     )
 
+@bot.tree.command(name="verify", description="Verify your Roblox account")
+@app_commands.describe(roblox_username="Your Roblox username")
+async def verify(interaction: discord.Interaction, roblox_username: str):
+    """Verify your Roblox account with your Discord account"""
+    await interaction.response.defer(ephemeral=True)
+    
+    embed = discord.Embed(
+        title="Verification Process",
+        description=f"To verify as **{roblox_username}**, please follow these steps:",
+        color=discord.Color.blue()
+    )
+    
+    # Generate a simple verification code
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    
+    embed.add_field(
+        name="Step 1",
+        value=f"Go to your [Roblox Profile](https://www.roblox.com/users/profile)",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Step 2",
+        value="Click the pencil icon next to your display name to edit your profile",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Step 3",
+        value=f"Add this verification code to your About Me section:\n`{code}`",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Step 4",
+        value="Click the 'Verify' button below when done",
+        inline=False
+    )
+    
+    # Create a simple button for verification
+    class VerifyButton(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=300)  # 5 minute timeout
+        
+        @discord.ui.button(label="Verify", style=discord.ButtonStyle.green)
+        async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # Disable the button
+            button.disabled = True
+            await interaction.response.edit_message(view=self)
+            
+            await interaction.followup.send(
+                f"Verification for **{roblox_username}** started! In the standalone version, this would verify your account.",
+                ephemeral=True
+            )
+    
+    await interaction.followup.send(embed=embed, view=VerifyButton(), ephemeral=True)
+    logger.info(f"Sent verification request to {interaction.user.name} for Roblox username: {roblox_username}")
+
+@bot.tree.command(name="ticket", description="Create a support ticket")
+async def ticket(interaction: discord.Interaction):
+    """Create a support ticket"""
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Check if ticket system is set up
+        ticket_category = None
+        # In the full implementation, you'd get this from config
+        
+        if not ticket_category:
+            embed = discord.Embed(
+                title="Ticket System",
+                description="The ticket system would create a support ticket here.",
+                color=discord.Color.blue()
+            )
+            embed.add_field(
+                name="Standalone Mode Notice",
+                value="In standalone mode, ticket creation is simulated. In the full version, this would create a private ticket channel.",
+                inline=False
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+    except Exception as e:
+        logger.error(f"Error creating ticket: {e}")
+        await interaction.followup.send(f"An error occurred: {e}", ephemeral=True)
+
 @bot.tree.command(name="help", description="Get help with bot commands")
 async def help_command(interaction: discord.Interaction):
     """Help command showing available commands"""
@@ -139,6 +226,35 @@ async def help_command(interaction: discord.Interaction):
         value="`/ping` - Check if bot is responding\n"
               "`/help` - Show this help message\n"
               "`/about` - About this bot",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Verification",
+        value="`/verify <roblox_username>` - Verify your Roblox account\n"
+              "`/update` - Update your nickname with your Roblox rank",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Tickets",
+        value="`/ticket` - Create a support ticket\n"
+              "`/closeticket` - Close a ticket channel",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Group Management",
+        value="`/rank <roblox_username> [rank_name]` - View or change a user's rank\n"
+              "`/setupid <group_id>` - Set up the Roblox group ID for the server",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Moderation",
+        value="`/kick <member> [reason]` - Kick a member from the server\n"
+              "`/ban <member> [reason]` - Ban a member from the server\n"
+              "`/timeout <member> <duration> [reason]` - Timeout a member",
         inline=False
     )
     
@@ -158,8 +274,187 @@ async def about(interaction: discord.Interaction):
     embed.add_field(name="Servers", value=str(len(bot.guilds)), inline=True)
     embed.add_field(name="Made with", value="Discord.py", inline=True)
     
+    embed.add_field(
+        name="Features",
+        value="• Roblox account verification\n"
+              "• Support tickets system\n"
+              "• Group rank management\n"
+              "• Advanced moderation tools",
+        inline=False
+    )
+    
     embed.set_footer(text="Running in standalone mode")
     await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="rank", description="Rank a user in the Roblox group")
+@app_commands.describe(
+    roblox_username="The Roblox username to rank",
+    rank_name="The name of the rank to give (leave empty to view current rank)"
+)
+async def rank(interaction: discord.Interaction, roblox_username: str, rank_name: str = None):
+    """Rank a user in the Roblox group (standalone simulation)"""
+    await interaction.response.defer(ephemeral=False)
+    
+    embed = discord.Embed(
+        title="Rank Command (Standalone Mode)",
+        description=f"In the full version, this would check or change the rank for **{roblox_username}**.",
+        color=discord.Color.blue()
+    )
+    
+    if rank_name:
+        embed.add_field(
+            name="Requested Action",
+            value=f"Change rank to: **{rank_name}**",
+            inline=False
+        )
+    else:
+        embed.add_field(
+            name="Requested Action",
+            value=f"View current rank for: **{roblox_username}**",
+            inline=False
+        )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. The actual rank command requires database access and Roblox API connectivity.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed)
+    
+@bot.tree.command(name="kick", description="Kick a member from the server")
+@app_commands.describe(
+    member="The member to kick",
+    reason="The reason for kicking the member"
+)
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = None):
+    """Kick a member from the server"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has kick permissions
+    if not interaction.user.guild_permissions.kick_members:
+        await interaction.followup.send("You don't have permission to kick members.", ephemeral=True)
+        return
+    
+    # In standalone mode, just simulate the kick
+    embed = discord.Embed(
+        title="Moderation Action (Standalone Mode)",
+        description=f"In the full version, this would kick **{member.name}** from the server.",
+        color=discord.Color.orange()
+    )
+    
+    if reason:
+        embed.add_field(name="Reason", value=reason, inline=False)
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual kick was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="ban", description="Ban a member from the server")
+@app_commands.describe(
+    member="The member to ban",
+    reason="The reason for banning the member"
+)
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = None):
+    """Ban a member from the server"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has ban permissions
+    if not interaction.user.guild_permissions.ban_members:
+        await interaction.followup.send("You don't have permission to ban members.", ephemeral=True)
+        return
+    
+    # In standalone mode, just simulate the ban
+    embed = discord.Embed(
+        title="Moderation Action (Standalone Mode)",
+        description=f"In the full version, this would ban **{member.name}** from the server.",
+        color=discord.Color.red()
+    )
+    
+    if reason:
+        embed.add_field(name="Reason", value=reason, inline=False)
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual ban was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="closeticket", description="Close a ticket channel")
+async def closeticket(interaction: discord.Interaction):
+    """Close a ticket channel"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if the channel is a ticket (in standalone mode, just simulate)
+    embed = discord.Embed(
+        title="Ticket Action (Standalone Mode)",
+        description="In the full version, this would close the current ticket.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual ticket was closed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="update", description="Update your nickname with your current Roblox group rank")
+async def update(interaction: discord.Interaction):
+    """Update your Discord nickname with your current Roblox group rank"""
+    await interaction.response.defer(ephemeral=True)
+    
+    embed = discord.Embed(
+        title="Nickname Update (Standalone Mode)",
+        description="In the full version, this would update your nickname with your Roblox group rank.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual nickname update was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="setupid", description="Set up the Roblox group ID for the server")
+@app_commands.describe(group_id="The Roblox group ID")
+async def setupid(interaction: discord.Interaction, group_id: str):
+    """Set up the Roblox group ID for the server"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="Group Setup (Standalone Mode)",
+        description=f"In the full version, this would set up Roblox group **{group_id}** for this server.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Group ID",
+        value=group_id,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual group setup was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 # Minimal HTTP server for Render.com port binding
 class SimpleHandler(BaseHTTPRequestHandler):
