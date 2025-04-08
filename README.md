@@ -24,8 +24,20 @@ A comprehensive Discord bot for Roblox group management, providing advanced auth
 ### Running on Replit
 1. Fork this project on Replit
 2. Add your DISCORD_TOKEN to the Secrets tab or .env file
-3. Run the project - the Discord bot will automatically start
-4. If the bot doesn't come online, try restarting the 'discord_bot' workflow
+3. Set up a database using one of these methods:
+   - **PostgreSQL (Recommended)**: Go to Tools > Database and create a new PostgreSQL database. Environment variables will be set automatically.
+   - **SQLite**: Add `DATABASE_URL=sqlite:///app.db` to your Secrets or .env file
+4. Run the project - the Discord bot will automatically start
+5. If the bot doesn't come online, try restarting the 'discord_bot' workflow
+
+## Database Configuration
+
+The application supports multiple database options:
+1. **PostgreSQL**: For production use (recommended)
+2. **SQLite**: For development or when PostgreSQL is unavailable
+3. **Emergency Mode**: If no database connection is available, the app will run with limited functionality
+
+The application includes a robust fallback system that will automatically try SQLite if PostgreSQL fails, and then emergency mode as a last resort.
 
 ## Commands
 
