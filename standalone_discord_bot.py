@@ -874,15 +874,25 @@ def start_http_server():
     # Get port from environment or use default
     port = int(os.environ.get('PORT', 8080))
     
-    # Create server
-    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
-    logger.info(f"Starting HTTP server on port {port}")
-    
-    # Run server in a separate thread
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.daemon = True
-    server_thread.start()
-    logger.info(f"HTTP server thread started")
+    # Try to use the specified port, but if it's in use, 
+    # try some alternatives for Replit environment
+    for attempt_port in [port, 9000, 9090, 7070, 6060]:
+        try:
+            server = HTTPServer(('0.0.0.0', attempt_port), SimpleHandler)
+            logger.info(f"Starting HTTP server on port {attempt_port}")
+            
+            # Run server in a separate thread
+            server_thread = threading.Thread(target=server.serve_forever)
+            server_thread.daemon = True
+            server_thread.start()
+            logger.info(f"HTTP server thread started on port {attempt_port}")
+            break
+        except OSError as e:
+            logger.warning(f"Port {attempt_port} is already in use, trying another port")
+            if attempt_port == 6060:  # Last attempt
+                logger.error("Failed to bind to any port for HTTP server")
+                # Continue without HTTP server
+                return
 
 # Main function to be imported by other scripts
 def main():
