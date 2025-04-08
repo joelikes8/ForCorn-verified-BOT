@@ -79,12 +79,32 @@ async def on_ready():
         )
     )
     
-    # Sync commands
+    # Force sync commands to all guilds (important for new command visibility)
     try:
+        # First clear all commands globally
+        bot.tree.clear_commands(guild=None)
+        logger.info("Cleared all global commands")
+        
+        # Then clear commands in all guilds
+        for guild in bot.guilds:
+            bot.tree.clear_commands(guild=guild)
+            logger.info(f"Cleared commands in guild {guild.name}")
+        
+        # Now sync everything
         synced = await bot.tree.sync()
-        logger.info(f"Synced {len(synced)} command(s)")
+        logger.info(f"Synced {len(synced)} global command(s)")
+        
+        # Sync to each guild individually to ensure immediate updates
+        for guild in bot.guilds:
+            guild_id = guild.id
+            try:
+                await bot.tree.sync(guild=discord.Object(id=guild_id))
+                logger.info(f"Synced commands to guild {guild.name} (ID: {guild_id})")
+            except Exception as e:
+                logger.error(f"Failed to sync commands to guild {guild.name}: {e}")
     except Exception as e:
         logger.error(f"Failed to sync commands: {e}")
+        logger.error(traceback.format_exc())
     
     logger.info("Bot is ready!")
 
@@ -381,6 +401,50 @@ async def ban(interaction: discord.Interaction, member: discord.Member, reason: 
     embed.add_field(
         name="Standalone Mode Notice",
         value="This is a simulation in standalone mode. No actual ban was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="timeout", description="Timeout a member")
+@app_commands.describe(
+    member="The member to timeout",
+    duration="Duration in minutes (max 40320 minutes / 28 days)",
+    reason="The reason for timing out the member"
+)
+async def timeout(
+    interaction: discord.Interaction, 
+    member: discord.Member, 
+    duration: int, 
+    reason: str = None
+):
+    """Timeout a member for a specified duration"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has timeout permissions
+    if not interaction.user.guild_permissions.moderate_members:
+        await interaction.followup.send("You don't have permission to timeout members.", ephemeral=True)
+        return
+    
+    # In standalone mode, just simulate the timeout
+    embed = discord.Embed(
+        title="Moderation Action (Standalone Mode)",
+        description=f"In the full version, this would timeout **{member.name}** for {duration} minutes.",
+        color=discord.Color.orange()
+    )
+    
+    if reason:
+        embed.add_field(name="Reason", value=reason, inline=False)
+    
+    embed.add_field(
+        name="Duration",
+        value=f"{duration} minutes",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual timeout was performed.",
         inline=False
     )
     
