@@ -5,13 +5,18 @@ Standalone Discord Bot
 This is a completely standalone Discord bot script that doesn't import
 any other modules from the project. It's solely purpose is to run 
 as an isolated Discord bot in the discord_bot workflow.
+
+It also includes a minimal HTTP server for Render.com deployment
+to satisfy the port binding requirements.
 """
 
 import os
 import sys
 import logging
 import traceback
+import threading
 from dotenv import load_dotenv
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Configure logging
 logging.basicConfig(
@@ -156,9 +161,78 @@ async def about(interaction: discord.Interaction):
     embed.set_footer(text="Running in standalone mode")
     await interaction.response.send_message(embed=embed)
 
+# Minimal HTTP server for Render.com port binding
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        """Handle GET requests with a simple status page"""
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        
+        # Simple status page showing bot is running
+        bot_status = "Unknown"
+        if hasattr(bot, 'user') and bot.user:
+            bot_status = f"Online as {bot.user.name}"
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>ForCorn Discord Bot Status</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
+                .container {{ max-width: 800px; margin: 0 auto; }}
+                .status {{ padding: 20px; border-radius: 5px; background-color: #f0f0f0; }}
+                .online {{ color: green; }}
+                .header {{ background-color: #3498db; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>ForCorn Discord Bot</h1>
+                </div>
+                <div class="status">
+                    <h2>Status: <span class="online">{bot_status}</span></h2>
+                    <p>Connected to {len(bot.guilds) if hasattr(bot, 'guilds') else 0} Discord servers</p>
+                    <p>This is a status page for the Discord bot. The bot is a separate process running alongside this web server.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        self.wfile.write(html.encode())
+    
+    def log_message(self, format, *args):
+        """Override log_message to use our logger"""
+        logger.info(f"HTTP Server: {format%args}")
+
+def start_http_server():
+    """Start a minimal HTTP server for Render.com port binding"""
+    # Get port from environment or use default
+    port = int(os.environ.get('PORT', 8080))
+    
+    # Create server
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    logger.info(f"Starting HTTP server on port {port}")
+    
+    # Run server in a separate thread
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+    logger.info(f"HTTP server thread started")
+
 # Main function to be imported by other scripts
 def main():
     logger.info("Running standalone Discord bot...")
+    
+    # Start HTTP server for Render.com port binding
+    # Only start if PORT env var is set (Render.com sets this)
+    if 'PORT' in os.environ:
+        logger.info("PORT environment variable detected, starting HTTP server for Render.com")
+        start_http_server()
+    
     try:
         bot.run(TOKEN)
     except discord.errors.LoginFailure:
