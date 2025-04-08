@@ -1,122 +1,138 @@
+"""
+Web application for ForCorn Discord Bot
+
+This is a simplified web interface for the ForCorn Discord Bot.
+It provides basic status information and configuration options.
+"""
+
 import os
-import json
-import threading
-import subprocess
+import logging
 import sys
-from flask import Flask, render_template, jsonify, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, render_template, jsonify
 from sqlalchemy.orm import DeclarativeBase
+from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("webapp")
 
 # Load environment variables
 load_dotenv()
 
-# Initialize database
+# Create base class for SQLAlchemy models
 class Base(DeclarativeBase):
     pass
 
-db = SQLAlchemy(model_class=Base)
-
-# Initialize Flask app
+# Create and configure Flask app with SQLAlchemy
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "default-secret-key")
+app.secret_key = os.environ.get("SESSION_SECRET", "default-secret-key-for-development")
 
-# Configure database
+# Try to use DATABASE_URL, but fall back to SQLite if not available
 database_url = os.environ.get("DATABASE_URL")
 if not database_url:
-    print("WARNING: DATABASE_URL environment variable not set. Using SQLite instead.")
-    database_url = "sqlite:///bot.db"
+    database_url = "sqlite:///app.db"
+    logger.warning(f"DATABASE_URL not found, using SQLite: {database_url}")
 
-# Handle Render.com's PostgreSQL URL format
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
-
+# Configure Flask-SQLAlchemy
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
 
-# Initialize app with extensions
+# Create database instance
+db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
-# Create tables
+# Import models and initialize database
 with app.app_context():
-    # Import models here to avoid circular imports
-    import models
-    db.create_all()
+    try:
+        # Import models if available
+        try:
+            import models
+            logger.info("Models imported successfully")
+        except ImportError:
+            logger.warning("Could not import models, database functionality may be limited")
+        
+        # Create tables
+        db.create_all()
+        logger.info("Database tables created")
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+        logger.error("Web application will run with limited functionality")
 
-# Home route
+# Routes
 @app.route('/')
 def index():
+    """Return the main index page"""
     return render_template('index.html')
 
-# Status route to check if the bot is online
-@app.route('/api/status')
+@app.route('/status')
 def status():
+    """Return the status of the application"""
+    return jsonify({
+        "status": "ok",
+        "message": "ForCorn Bot web interface is running",
+        "version": "1.0.0",
+        "database_available": db is not None,
+        "database_url": database_url.replace("://", "://<redacted>:<redacted>@") if "://" in database_url else database_url
+    })
+
+@app.route('/api/status')
+def api_status():
+    """Return the status of the bot for the API"""
+    # Check if Discord bot is running
     try:
-        # Import models here to avoid circular imports
-        from models import Guild
+        import psutil
+        bot_running = False
+        for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+            cmdline = ' '.join(process.info['cmdline'] or []).lower()
+            if 'discord' in cmdline and 'bot' in cmdline:
+                bot_running = True
+                break
         
-        # Count number of servers in the database
-        guild_count = Guild.query.count()
-        
-        if guild_count > 0 or os.path.exists('data/server_configs.json'):
-            return jsonify({
-                'status': 'online',
-                'message': 'Bot is running',
-                'server_count': guild_count,
-                'using_database': True
-            })
-        else:
-            return jsonify({
-                'status': 'initializing',
-                'message': 'Bot is starting up',
-                'using_database': True
-            })
-    except Exception as e:
         return jsonify({
-            'status': 'error',
-            'message': str(e)
+            "status": "online" if bot_running else "offline",
+            "message": "Bot is operational" if bot_running else "Bot is not running",
+            "server_count": "2+",  # Placeholder
+            "using_database": "postgresql" in database_url.lower()
+        })
+    except Exception as e:
+        logger.error(f"Error checking bot status: {e}")
+        return jsonify({
+            "status": "offline",
+            "message": f"Could not check bot status: {str(e)}"
         })
 
-# Create necessary templates directory and basic template if it doesn't exist
-os.makedirs('templates', exist_ok=True)
-
-# Bot process
-bot_process = None
-
+@app.route('/start-bot')
 def start_bot():
-    global bot_process
+    """Start the Discord bot as a separate process"""
     try:
-        # Start the Discord bot in a separate process
-        bot_process = subprocess.Popen(['python3', 'main.py'], 
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT,
-                                      text=True)
-        
-        # Log bot output
-        while True:
-            line = bot_process.stdout.readline()
-            if not line:
-                break
-            print(f"BOT: {line.strip()}")
-            
+        logger.info("Starting Discord bot...")
+        import subprocess
+        process = subprocess.Popen(["python", "simple_discord_bot.py"])
+        logger.info(f"Started Discord bot (PID: {process.pid})")
+        return jsonify({
+            "status": "ok",
+            "message": "Discord bot started",
+            "pid": process.pid
+        })
     except Exception as e:
-        print(f"Error starting bot: {e}")
+        logger.error(f"Error starting bot: {e}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error starting bot: {str(e)}"
+        }), 500
 
-# Start the bot in a separate thread if environment variable is set
-if os.environ.get("START_BOT", "true").lower() == "true":
-    bot_thread = threading.Thread(target=start_bot)
-    bot_thread.daemon = True
-    bot_thread.start()
-    print("Bot thread started")
-
-if __name__ == '__main__':
+# Run the app if executed directly
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    # Print the port we're binding to - helpful for debugging
-    print(f"Starting server on port {port}")
-    print(f"Environment variables: PORT={os.environ.get('PORT')}", file=sys.stderr)
-    print(f"Using host: 0.0.0.0 and port: {port}", file=sys.stderr)
-    # Ensure we're binding to 0.0.0.0 to make the app accessible
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)

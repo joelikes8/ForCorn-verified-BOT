@@ -1,0 +1,68 @@
+"""
+Main entry point
+
+This file is responsible for running either the Flask web application
+or the Discord bot depending on the workflow that called it.
+"""
+
+import os
+import logging
+import sys
+import subprocess
+from flask import Flask, render_template, jsonify
+from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Check if this is being run from the discord_bot workflow
+if len(sys.argv) > 1 and sys.argv[1] == '--discord-bot':
+    logger.info("Detected discord_bot workflow request, running Discord bot...")
+    # Override the PostgreSQL DATABASE_URL with SQLite
+    os.environ["DATABASE_URL"] = "sqlite:///bot.db"
+    try:
+        logger.info("Starting Discord bot with run_discord_bot.py...")
+        from run_discord_bot import main as run_bot
+        run_bot()
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Error running Discord bot: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+
+# Continue with web application if not running Discord bot
+logger.info("Starting web application...")
+
+# Load environment variables
+load_dotenv()
+
+# Import the Flask application
+from app import app
+
+# Route definitions
+@app.route('/')
+def index():
+    """Return the main index page"""
+    return render_template('index.html')
+
+@app.route('/status')
+def status():
+    """Return the status of the application"""
+    return jsonify({
+        "status": "ok",
+        "message": "ForCorn Bot web interface is running",
+        "version": "1.0.0"
+    })
+
+# Only run the server directly if this file is executed directly
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
