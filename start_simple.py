@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Simple Discord Bot Starter for Render.com
 
@@ -10,44 +10,55 @@ import os
 import sys
 import logging
 import time
+import traceback
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
+    handlers=[logging.StreamHandler()]
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("discord_bot")
 
 def main():
     """Directly run the bot with its own imports"""
-    logger.info("Starting Discord bot in simple mode...")
+    logger.info("Starting Discord bot...")
     
-    # Print environment information
-    logger.info(f"Python version: {sys.version}")
-    logger.info(f"Current directory: {os.getcwd()}")
-    logger.info(f"Files in current directory: {os.listdir('.')}")
-    
-    # Check if DISCORD_TOKEN is available
+    # Check for Discord token
     if not os.environ.get("DISCORD_TOKEN"):
-        logger.error("DISCORD_TOKEN environment variable not set")
-        return 1
+        logger.critical("DISCORD_TOKEN environment variable is missing")
+        sys.exit(1)
     
-    # This approach uses a simpler method of running the bot's main.py
     try:
-        logger.info("Importing and running main.py...")
+        # Import the discord_main module and run it directly
+        logger.info("Importing and running discord_main.py")
+        import discord_main
         
-        # Import the main function from main.py
-        from main import main as run_bot
-        
-        # Run the bot's main function
-        run_bot()
-        
-        return 0
+        # Run the main function
+        logger.info("Calling discord_main.main() function")
+        discord_main.main()
+            
     except Exception as e:
-        logger.error(f"Error running bot: {e}")
-        logger.exception("Traceback:")
-        return 1
+        logger.error(f"Error starting bot: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    retry_count = 0
+    max_retries = 5
+    
+    while retry_count < max_retries:
+        try:
+            main()
+            break  # Exit the loop if successful
+        except Exception as e:
+            retry_count += 1
+            logger.error(f"Bot crashed (attempt {retry_count}/{max_retries}): {e}")
+            
+            if retry_count < max_retries:
+                retry_delay = 10  # seconds
+                logger.info(f"Restarting in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logger.critical(f"Bot failed after {max_retries} attempts. Giving up.")
+                sys.exit(1)

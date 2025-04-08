@@ -1,10 +1,14 @@
-services:
+"""
+Script to update render.yaml to fix port binding issues
+"""
+
+updated_render_yaml = """services:
   # Discord Bot Service
   - type: worker
     name: forcorn-discord-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python discord_main.py
+    startCommand: python start_simple.py
     envVars:
       - key: DISCORD_TOKEN
         sync: false
@@ -46,3 +50,10 @@ databases:
     databaseName: forcornbot
     user: forcorn
     plan: free
+"""
+
+# Write the updated YAML to the file
+with open("render.yaml", "w") as f:
+    f.write(updated_render_yaml)
+
+print("render.yaml has been updated successfully!")
