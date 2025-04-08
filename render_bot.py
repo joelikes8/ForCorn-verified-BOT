@@ -4,98 +4,83 @@ This file ensures that the Discord bot runs correctly in a worker dyno.
 """
 
 import os
-import time
-import subprocess
 import sys
+import subprocess
 import logging
-import traceback
+import time
 
-# Configure logging
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()],
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger("render_bot")
 
 def check_env_vars():
     """Check for required environment variables"""
-    required_vars = ["DISCORD_TOKEN", "DATABASE_URL"]
-    missing_vars = []
-    
-    for var in required_vars:
-        if not os.environ.get(var):
-            missing_vars.append(var)
+    required_vars = ["DISCORD_TOKEN"]
+    missing_vars = [var for var in required_vars if not os.environ.get(var)]
     
     if missing_vars:
-        logging.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        logger.error("Bot cannot start without these variables set.")
         return False
     return True
 
 def start_bot_directly():
     """Run the bot code in the current process"""
+    logger.info("Starting Discord bot directly...")
     try:
-        logging.info("Starting Discord bot in the current process...")
-        import discord_main
-        discord_main.main()
-        return True
+        from discord_bot_workflow import main
+        main()
     except Exception as e:
-        logging.error(f"Error in bot process: {e}")
-        logging.error(traceback.format_exc())
+        logger.error(f"Error running Discord bot directly: {e}")
         return False
+    return True
 
 def start_bot_subprocess():
     """Run the bot as a subprocess and monitor it"""
-    cmd = [sys.executable, "discord_main.py"]
-    logging.info(f"Starting Discord bot as subprocess: {' '.join(cmd)}")
+    logger.info("Starting Discord bot as subprocess...")
     
-    try:
-        # Run the bot in a separate process
+    while True:
         process = subprocess.Popen(
-            cmd,
+            [sys.executable, "discord_bot_workflow.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            universal_newlines=True,
-            bufsize=1
+            universal_newlines=True
         )
         
-        # Monitor the process output
-        if process.stdout:
-            for line in process.stdout:
-                print(line, end="")
+        # Log output in real-time
+        for line in process.stdout:
+            print(line, end='')
+            sys.stdout.flush()
         
-        # Check if process terminated
-        process.wait()
-        return_code = process.returncode
+        # Wait for process to complete
+        exit_code = process.wait()
         
-        if return_code != 0:
-            logging.error(f"Bot process exited with code {return_code}")
-            return False
-            
-    except Exception as e:
-        logging.error(f"Error managing bot subprocess: {e}")
-        return False
-    
-    return True
+        if exit_code != 0:
+            logger.error(f"Bot process exited with code {exit_code}. Restarting in 10 seconds...")
+            time.sleep(10)
+        else:
+            logger.info("Bot process exited cleanly.")
+            break
 
 def main():
     """Main entry point for Render.com"""
-    logging.info("Starting Discord bot worker service on Render.com")
+    logger.info("=== ForCorn Discord Bot - Render.com Worker ===")
     
     if not check_env_vars():
-        logging.critical("Missing environment variables. Bot cannot start.")
         sys.exit(1)
     
-    # Try to run the bot directly first
+    logger.info("Environment variables verified.")
+    
+    # Try to start the bot directly first
     success = start_bot_directly()
     
-    # If direct start fails, try running as subprocess with monitoring
+    # If direct start fails, try subprocess method
     if not success:
-        logging.warning("Direct start failed, trying subprocess method...")
-        success = start_bot_subprocess()
-    
-    if not success:
-        logging.critical("All start methods failed. Exiting...")
-        sys.exit(1)
+        logger.info("Direct start failed, switching to subprocess method.")
+        start_bot_subprocess()
 
 if __name__ == "__main__":
     main()
