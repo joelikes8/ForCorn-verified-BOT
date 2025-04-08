@@ -79,29 +79,41 @@ async def on_ready():
         )
     )
     
-    # Force sync commands to all guilds (important for new command visibility)
+    # Ensure commands are synced, with extra safety checks
     try:
-        # First clear all commands globally
-        bot.tree.clear_commands(guild=None)
-        logger.info("Cleared all global commands")
-        
-        # Then clear commands in all guilds
-        for guild in bot.guilds:
-            bot.tree.clear_commands(guild=guild)
-            logger.info(f"Cleared commands in guild {guild.name}")
-        
-        # Now sync everything
+        # First try syncing without clearing
         synced = await bot.tree.sync()
         logger.info(f"Synced {len(synced)} global command(s)")
         
-        # Sync to each guild individually to ensure immediate updates
-        for guild in bot.guilds:
-            guild_id = guild.id
-            try:
-                await bot.tree.sync(guild=discord.Object(id=guild_id))
-                logger.info(f"Synced commands to guild {guild.name} (ID: {guild_id})")
-            except Exception as e:
-                logger.error(f"Failed to sync commands to guild {guild.name}: {e}")
+        # If no commands were synced, try a more aggressive approach
+        if len(synced) < 10:  # We should have at least 10 commands
+            logger.warning(f"Only {len(synced)} commands synced. Attempting recovery...")
+            
+            # Try force sync to all guilds
+            for guild in bot.guilds:
+                guild_id = guild.id
+                try:
+                    # Force sync to this guild
+                    guild_commands = await bot.tree.sync(guild=discord.Object(id=guild_id))
+                    logger.info(f"Force synced {len(guild_commands)} commands to guild {guild.name} (ID: {guild_id})")
+                except Exception as e:
+                    logger.error(f"Failed to force sync commands to guild {guild.name}: {e}")
+            
+            # Try global sync one more time
+            synced = await bot.tree.sync()
+            logger.info(f"Re-synced {len(synced)} global command(s) after recovery attempt")
+        else:
+            # Normal guild sync if initial sync was successful
+            for guild in bot.guilds:
+                guild_id = guild.id
+                try:
+                    guild_commands = await bot.tree.sync(guild=discord.Object(id=guild_id))
+                    logger.info(f"Synced {len(guild_commands)} commands to guild {guild.name} (ID: {guild_id})")
+                except Exception as e:
+                    logger.error(f"Failed to sync commands to guild {guild.name}: {e}")
+        
+        logger.info("All commands should now be available. If commands are still missing, they may take up to an hour to propagate through Discord's systems.")
+        
     except Exception as e:
         logger.error(f"Failed to sync commands: {e}")
         logger.error(traceback.format_exc())
