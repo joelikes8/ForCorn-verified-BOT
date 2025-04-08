@@ -1,0 +1,13 @@
+# Bot-Only Service (Worker):
+startCommand: python standalone_discord_bot.py
+
+# Web+Bot Service (Web):
+startCommand: gunicorn --bind 0.0.0.0:$PORT main:app
+
+# Important environment variables to include:
+# For Bot-Only mode:
+BOT_ONLY_MODE=true
+DISCORD_BOT_WORKFLOW=true
+NO_WEB_SERVER=true
+
+# Make sure standalone_discord_bot.py is properly configured and doesn't depend on importing other modules
