@@ -247,7 +247,8 @@ def start_bot():
     try:
         logger.info("Starting Discord bot...")
         import subprocess
-        process = subprocess.Popen(["python", "simple_discord_bot.py"])
+        # Use the new workflow script
+        process = subprocess.Popen(["python", "discord_bot_workflow.py"])
         logger.info(f"Started Discord bot (PID: {process.pid})")
         return jsonify({
             "status": "ok",

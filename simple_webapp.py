@@ -180,7 +180,7 @@ def start_bot():
     """Start the Discord bot as a separate process"""
     try:
         logger.info("Starting Discord bot in emergency mode...")
-        process = subprocess.Popen(["python", "simple_discord_bot.py"])
+        process = subprocess.Popen(["python", "discord_bot_workflow.py"])
         logger.info(f"Started Discord bot (PID: {process.pid})")
         return jsonify({
             "status": "ok",
