@@ -58,5 +58,9 @@ except Exception as e:
 
 # For direct execution
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Only start the web server if not in discord bot workflow mode
+    if not os.environ.get("DISCORD_BOT_WORKFLOW") and not os.environ.get("NO_WEB_SERVER"):
+        port = int(os.environ.get("PORT", 5000))
+        app.run(host="0.0.0.0", port=port, debug=True)
+    else:
+        logger.info("Web server disabled due to DISCORD_BOT_WORKFLOW or NO_WEB_SERVER being set")
