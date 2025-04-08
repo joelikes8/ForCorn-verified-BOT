@@ -93,11 +93,22 @@ with app.app_context():
             
             # Reinitialize with SQLite
             try:
-                db.init_app(app)
+                # Don't call init_app again, just change the URI
                 if models_imported:
-                    db.create_all()
-                    logger.info(f"Successfully switched to SQLite fallback: {fallback_db_url}")
-                    db_connected = True
+                    try:
+                        with app.app_context():
+                            db.create_all()
+                            logger.info(f"Successfully switched to SQLite fallback: {fallback_db_url}")
+                            db_connected = True
+                    except:
+                        logger.warning("Could not create tables automatically, trying to reconnect")
+                        # This is a more aggressive approach to reset the SQLAlchemy connection
+                        db.engine.dispose()
+                        db.get_engine(app, bind=None)
+                        with app.app_context():
+                            db.create_all()
+                            logger.info("Successfully recreated engine and created tables")
+                            db_connected = True
                 else:
                     logger.warning("Models not imported, database functionality will be limited")
             except Exception as sqlite_error:
@@ -114,78 +125,76 @@ def index():
         return render_template('index.html')
     else:
         # Create a simple template if the database is not connected
-        error_page = """
-        <!DOCTYPE html>
-        <html lang="en" data-bs-theme="dark">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Database Connection Error</title>
-            <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
-            <style>
-                .error-container {
-                    padding: 50px 20px;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }
-                .alert-box {
-                    padding: 20px;
-                    border-radius: 5px;
-                    background-color: rgba(220, 53, 69, 0.2);
-                    border: 1px solid #dc3545;
-                    margin-bottom: 20px;
-                }
-                .solution-box {
-                    padding: 20px;
-                    border-radius: 5px;
-                    background-color: rgba(25, 135, 84, 0.2);
-                    border: 1px solid #198754;
-                    margin-bottom: 20px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container error-container">
-                <h1>Database Connection Error</h1>
-                
-                <div class="alert-box">
-                    <h3>What happened?</h3>
-                    <p>We couldn't connect to the PostgreSQL database at:</p>
-                    <pre>{db_url_masked}</pre>
-                    <p>Error: <code>{error_message}</code></p>
-                </div>
-                
-                <div class="solution-box">
-                    <h3>Possible Solutions</h3>
-                    <ol>
-                        <li>Check if your Neon database project is active</li>
-                        <li>Verify that your connection credentials are correct</li>
-                        <li>Update the DATABASE_URL environment variable with valid credentials</li>
-                        <li>Switch to using SQLite by changing DATABASE_URL to: <code>sqlite:///app.db</code></li>
-                    </ol>
-                </div>
-                
-                <div class="card">
-                    <div class="card-body">
-                        <h3>Current Status</h3>
-                        <p>Web interface: <span class="badge bg-success">Running</span></p>
-                        <p>Database connection: <span class="badge bg-danger">Failed</span></p>
-                        <p>Using SQLite fallback: <span class="badge bg-{sqlite_badge}">{sqlite_status}</span></p>
-                    </div>
-                </div>
-                
-                <footer class="pt-3 mt-4 text-body-secondary border-top">
-                    &copy; 2025 Roblox Group Manager Bot
-                </footer>
+        current_db_url = app.config["SQLALCHEMY_DATABASE_URI"]
+        is_sqlite = "sqlite" in current_db_url.lower()
+        
+        error_page = f"""
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Error</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <style>
+        .error-container {{
+            padding: 50px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+        .alert-box {{
+            padding: 20px;
+            border-radius: 5px;
+            background-color: rgba(220, 53, 69, 0.2);
+            border: 1px solid #dc3545;
+            margin-bottom: 20px;
+        }}
+        .solution-box {{
+            padding: 20px;
+            border-radius: 5px;
+            background-color: rgba(25, 135, 84, 0.2);
+            border: 1px solid #198754;
+            margin-bottom: 20px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container error-container">
+        <h1>Database Connection Error</h1>
+        
+        <div class="alert-box">
+            <h3>What happened?</h3>
+            <p>We couldn't connect to the PostgreSQL database at:</p>
+            <pre>{database_url.replace("://", "://<username>:<password>@") if "://" in database_url else database_url}</pre>
+            <p>Error: <code>{str(app.config.get("DB_ERROR", "Unknown database error"))}</code></p>
+        </div>
+        
+        <div class="solution-box">
+            <h3>Possible Solutions</h3>
+            <ol>
+                <li>Check if your Neon database project is active</li>
+                <li>Verify that your connection credentials are correct</li>
+                <li>Update the DATABASE_URL environment variable with valid credentials</li>
+                <li>Switch to using SQLite by changing DATABASE_URL to: <code>sqlite:///app.db</code></li>
+            </ol>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <h3>Current Status</h3>
+                <p>Web interface: <span class="badge bg-success">Running</span></p>
+                <p>Database connection: <span class="badge bg-danger">Failed</span></p>
+                <p>Using SQLite fallback: <span class="badge bg-{"success" if is_sqlite else "danger"}">{"Yes" if is_sqlite else "No"}</span></p>
             </div>
-        </body>
-        </html>
-        """.format(
-            db_url_masked=database_url.replace("://", "://<username>:<password>@") if "://" in database_url else database_url,
-            error_message=str(app.config.get("DB_ERROR", "Unknown database error")),
-            sqlite_badge="success" if "sqlite" in app.config["SQLALCHEMY_DATABASE_URI"].lower() else "danger",
-            sqlite_status="Yes" if "sqlite" in app.config["SQLALCHEMY_DATABASE_URI"].lower() else "No"
-        )
+        </div>
+        
+        <footer class="pt-3 mt-4 text-body-secondary border-top">
+            &copy; 2025 Roblox Group Manager Bot
+        </footer>
+    </div>
+</body>
+</html>
+"""
         return error_page
 
 @app.route('/status')
