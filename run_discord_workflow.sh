@@ -1,8 +1,13 @@
 #!/bin/bash
-# Script to run the Discord bot in a separate workflow
+# Discord Bot Workflow Runner - BOT ONLY
+# This script runs only the Discord bot with no web components
 
-# Force using SQLite instead of PostgreSQL
-export DATABASE_URL=sqlite:///bot.db
+echo "Starting Discord bot in dedicated workflow..."
 
-# Run the independent Discord bot script
-python run_discord_bot.py
+# Set environment variables to indicate we are in bot-only mode
+export DISCORD_BOT_WORKFLOW=true
+export NO_WEB_SERVER=true
+export BOT_ONLY_MODE=true
+
+# Run the dedicated bot-only script
+python discord_bot_only.py
