@@ -12,3 +12,4 @@ Jinja2
 Werkzeug
 pynacl
 psutil
+aiohttp
