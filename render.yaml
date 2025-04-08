@@ -4,7 +4,7 @@ services:
     name: forcorn-discord-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python render_bot.py
+    startCommand: python start_simple.py
     envVars:
       - key: DISCORD_TOKEN
         sync: false
@@ -24,7 +24,7 @@ services:
     name: forcorn-web
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn webapp:app --bind 0.0.0.0:$PORT --log-level debug --timeout 120 --access-logfile - --error-logfile -
+    startCommand: gunicorn flask_app:app --bind 0.0.0.0:$PORT --log-level debug --timeout 120 --access-logfile - --error-logfile -
     envVars:
       - key: PORT
         value: 10000
