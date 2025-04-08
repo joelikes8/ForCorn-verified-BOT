@@ -264,21 +264,25 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(
         name="Verification",
         value="`/verify <roblox_username>` - Verify your Roblox account\n"
-              "`/update` - Update your nickname with your Roblox rank",
+              "`/update` - Update your nickname with your Roblox rank\n"
+              "`/background <roblox_username>` - Check if user is in blacklisted groups",
         inline=False
     )
     
     embed.add_field(
         name="Tickets",
         value="`/ticket` - Create a support ticket\n"
-              "`/closeticket` - Close a ticket channel",
+              "`/closeticket` - Close a ticket channel\n"
+              "`/sendticket [channel]` - Send the ticket panel to a channel",
         inline=False
     )
     
     embed.add_field(
         name="Group Management",
         value="`/rank <roblox_username> [rank_name]` - View or change a user's rank\n"
-              "`/setupid <group_id>` - Set up the Roblox group ID for the server",
+              "`/setupid <group_id>` - Set up the Roblox group ID for the server\n"
+              "`/ranksetup <group_id>` - Set up the Roblox group ID for ranking\n"
+              "`/setuptoken <token>` - Set up the Roblox API token for ranking",
         inline=False
     )
     
@@ -286,7 +290,16 @@ async def help_command(interaction: discord.Interaction):
         name="Moderation",
         value="`/kick <member> [reason]` - Kick a member from the server\n"
               "`/ban <member> [reason]` - Ban a member from the server\n"
-              "`/timeout <member> <duration> [reason]` - Timeout a member",
+              "`/timeout <member> <duration> [reason]` - Timeout a member\n"
+              "`/antiraid <action>` - Toggle anti-raid protection",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Server Setup",
+        value="`/setup_roles [verified_role] [mod_role] [admin_role]` - Set up verification and moderation roles\n"
+              "`/blacklistedgroups <group_id>` - Add a Roblox group to the blacklist\n"
+              "`/removeblacklist <group_id>` - Remove a Roblox group from the blacklist",
         inline=False
     )
     
@@ -527,6 +540,283 @@ async def setupid(interaction: discord.Interaction, group_id: str):
     embed.add_field(
         name="Standalone Mode Notice",
         value="This is a simulation in standalone mode. No actual group setup was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="ranksetup", description="Set up the Roblox group ID for ranking")
+@app_commands.describe(group_id="The Roblox group ID")
+async def ranksetup(interaction: discord.Interaction, group_id: str):
+    """Set up the Roblox group ID for ranking users"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="Rank Setup (Standalone Mode)",
+        description=f"In the full version, this would set up Roblox group **{group_id}** for ranking users.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Group ID",
+        value=group_id,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual rank setup was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="setuptoken", description="Set up the Roblox API token for ranking")
+@app_commands.describe(token="Your Roblox API token (this will be encrypted)")
+async def setuptoken(interaction: discord.Interaction, token: str):
+    """Set up the Roblox API token for ranking users"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="API Token Setup (Standalone Mode)",
+        description="In the full version, this would securely store your encrypted API token.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Security Notice",
+        value="Your token would be encrypted before storage and never stored in plain text.",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual token was stored.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="setup_roles", description="Set up verification and moderation roles")
+@app_commands.describe(
+    verified_role="The role to assign to verified users",
+    mod_role="The role with moderation permissions",
+    admin_role="The role with admin permissions"
+)
+async def setup_roles(
+    interaction: discord.Interaction, 
+    verified_role: discord.Role = None,
+    mod_role: discord.Role = None,
+    admin_role: discord.Role = None
+):
+    """Set up verification and moderation roles"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="Role Setup (Standalone Mode)",
+        description="In the full version, this would configure server roles.",
+        color=discord.Color.blue()
+    )
+    
+    if verified_role:
+        embed.add_field(
+            name="Verified Role",
+            value=f"Set to {verified_role.mention}",
+            inline=False
+        )
+    
+    if mod_role:
+        embed.add_field(
+            name="Moderator Role",
+            value=f"Set to {mod_role.mention}",
+            inline=False
+        )
+    
+    if admin_role:
+        embed.add_field(
+            name="Admin Role",
+            value=f"Set to {admin_role.mention}",
+            inline=False
+        )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual role setup was performed.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="antiraid", description="Toggle anti-raid protection")
+@app_commands.describe(
+    action="Enable or disable anti-raid protection"
+)
+@app_commands.choices(action=[
+    app_commands.Choice(name="enable", value="enable"),
+    app_commands.Choice(name="disable", value="disable")
+])
+async def antiraid(interaction: discord.Interaction, action: str):
+    """Toggle anti-raid protection"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="Anti-Raid Protection (Standalone Mode)",
+        description=f"In the full version, this would {action} anti-raid protection.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Action",
+        value=f"Anti-raid protection would be {action}d",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual changes were made to anti-raid settings.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="sendticket", description="Send the ticket panel to a channel")
+@app_commands.describe(
+    channel="The channel to send the ticket panel to"
+)
+async def sendticket(interaction: discord.Interaction, channel: discord.TextChannel = None):
+    """Send the ticket panel to a channel"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    target_channel = channel or interaction.channel
+    
+    embed = discord.Embed(
+        title="Ticket Panel (Standalone Mode)",
+        description=f"In the full version, this would send a ticket panel to {target_channel.mention}.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual ticket panel was sent.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="blacklistedgroups", description="Add a Roblox group to the blacklist")
+@app_commands.describe(
+    group_id="The Roblox group ID to blacklist"
+)
+async def blacklistedgroups(interaction: discord.Interaction, group_id: str):
+    """Add a Roblox group to the blacklist"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="Blacklist Group (Standalone Mode)",
+        description=f"In the full version, this would add Roblox group **{group_id}** to the blacklist.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Group ID",
+        value=group_id,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual group was blacklisted.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="removeblacklist", description="Remove a Roblox group from the blacklist")
+@app_commands.describe(
+    group_id="The Roblox group ID to remove from the blacklist"
+)
+async def removeblacklist(interaction: discord.Interaction, group_id: str):
+    """Remove a Roblox group from the blacklist"""
+    await interaction.response.defer(ephemeral=True)
+    
+    # Check if user has admin permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("You need administrator permissions to use this command.", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="Remove Blacklisted Group (Standalone Mode)",
+        description=f"In the full version, this would remove Roblox group **{group_id}** from the blacklist.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Group ID",
+        value=group_id,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual group was removed from the blacklist.",
+        inline=False
+    )
+    
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="background", description="Check if a Roblox user is in any blacklisted groups")
+@app_commands.describe(
+    roblox_username="The Roblox username to check"
+)
+async def background(interaction: discord.Interaction, roblox_username: str):
+    """Check if a Roblox user is in any blacklisted groups"""
+    await interaction.response.defer(ephemeral=True)
+    
+    embed = discord.Embed(
+        title="Background Check (Standalone Mode)",
+        description=f"In the full version, this would check if **{roblox_username}** is in any blacklisted groups.",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="Username",
+        value=roblox_username,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Standalone Mode Notice",
+        value="This is a simulation in standalone mode. No actual background check was performed.",
         inline=False
     )
     
