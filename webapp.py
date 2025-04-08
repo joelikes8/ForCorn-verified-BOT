@@ -90,7 +90,7 @@ def start_bot():
     global bot_process
     try:
         # Start the Discord bot in a separate process
-        bot_process = subprocess.Popen(['python', 'main.py'], 
+        bot_process = subprocess.Popen(['python3', 'main.py'], 
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.STDOUT,
                                       text=True)
