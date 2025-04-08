@@ -43,27 +43,39 @@ def start_bot_subprocess():
     logger.info("Starting Discord bot as subprocess...")
     
     while True:
-        process = subprocess.Popen(
-            [sys.executable, "discord_bot_workflow.py"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True
-        )
-        
-        # Log output in real-time
-        for line in process.stdout:
-            print(line, end='')
-            sys.stdout.flush()
-        
-        # Wait for process to complete
-        exit_code = process.wait()
-        
-        if exit_code != 0:
-            logger.error(f"Bot process exited with code {exit_code}. Restarting in 10 seconds...")
+        try:
+            # Run process and capture output
+            result = subprocess.run(
+                [sys.executable, "discord_bot_workflow.py"],
+                check=False,
+                capture_output=True,
+                text=True
+            )
+            
+            # Log the output
+            if result.stdout:
+                logger.info("Bot output:")
+                for line in result.stdout.splitlines():
+                    logger.info(line)
+            
+            # Log any errors
+            if result.stderr:
+                logger.error("Bot errors:")
+                for line in result.stderr.splitlines():
+                    logger.error(line)
+            
+            # Check exit code
+            if result.returncode != 0:
+                logger.error(f"Bot process exited with code {result.returncode}. Restarting in 10 seconds...")
+                time.sleep(10)
+            else:
+                logger.info("Bot process exited cleanly.")
+                break
+                
+        except Exception as e:
+            logger.error(f"Error running subprocess: {e}")
+            logger.error("Restarting in 10 seconds...")
             time.sleep(10)
-        else:
-            logger.info("Bot process exited cleanly.")
-            break
 
 def main():
     """Main entry point for Render.com"""
