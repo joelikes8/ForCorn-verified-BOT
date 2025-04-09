@@ -31,10 +31,13 @@ The bot is designed to run in multiple different ways:
 2. **Bot Only**: Isolated mode with no web components
    - Use the "discord_bot" workflow on Replit
    - Or run any of the following standalone scripts:
+     - `./start_workflow_bot.sh` - Recommended script that avoids port conflicts
+     - `python workflow_bot.py` - Workflow-specific implementation that uses port 9000
      - `python standalone_discord_bot.py` - Completely standalone implementation
-     - `python discord_bot_runner.py` - Dedicated runner for standalone bot
-     - `./run_discord_workflow.sh` - Shell script for workflow mode
+     - `python discord_bot_workflow_runner.py` - Dedicated runner for standalone bot
      - `python completely_isolated_bot.py` - Isolated implementation with no imports
+
+See `BOT_COMMAND_GUIDE.md` for detailed instructions on running the bot and using its commands.
 
 ### Runtime Modes
 
@@ -53,6 +56,15 @@ For the best deployment experience:
 - Use `main.py` for combined web+bot deployments
 
 ## Commands
+
+For a complete list of available commands and usage instructions, see the `BOT_COMMAND_GUIDE.md` file.
+
+### Common Commands
+
+- `/ping` - Check if the bot is responsive
+- `/blacklist <group_id>` - Add a Roblox group to the blacklist
+- `/unblacklist <group_id>` - Remove a Roblox group from the blacklist
+- `/background <roblox_username>` - Check if a user is in blacklisted groups
 
 ### Verification Commands
 - `/verify <roblox_username>` - Verify your Roblox account

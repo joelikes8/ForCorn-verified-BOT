@@ -25,6 +25,10 @@ if os.environ.get("DISCORD_BOT_WORKFLOW") or os.environ.get("BOT_ONLY_MODE"):
     os.environ["NO_WEB_SERVER"] = "true"
     os.environ["BOT_ONLY_MODE"] = "true"
     
+    # Set a different port for HTTP server in the bot to avoid conflicts
+    if not os.environ.get("PORT"):
+        os.environ["PORT"] = "9000"
+    
     # Try different approaches to start the bot, in priority order
     bot_started = False
     

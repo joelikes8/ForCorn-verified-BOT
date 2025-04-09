@@ -29,6 +29,10 @@ def main():
     os.environ["BOT_ONLY_MODE"] = "true"
     os.environ["NO_WEB_SERVER"] = "true"
     
+    # Set a different port for the HTTP server to avoid conflicts with the web application
+    if not os.environ.get("PORT"):
+        os.environ["PORT"] = "9000"
+    
     # Print status message
     logger.info("Starting Discord bot in workflow mode...")
     

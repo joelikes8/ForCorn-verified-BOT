@@ -1,71 +1,62 @@
 # ForCorn Discord Bot Command Guide
 
+This guide explains how to run the Discord bot and what commands are available.
+
 ## Running the Bot
 
-If you're experiencing issues with commands not responding, follow these steps:
+There are several ways to run the Discord bot:
 
-### Option 1: Run the Bot Directly (Recommended)
+### Method 1: Using the Workflow System (Recommended)
 
-```bash
-# Close any running processes first by clicking "Stop" in the Replit interface
+In the Replit interface, click on "Run" to start both the web application and Discord bot workflows.
 
-# Then run the bot directly using our optimized script
-./discord_bot_runner.sh
-```
+If you need to run only the Discord bot workflow, use the workflow selector in the top panel and choose "discord_bot".
 
-This script will automatically choose the best way to run the bot without conflicting with the web server.
+### Method 2: Running the Bot Manually
 
-### Option 2: Use the Simplified Bot Runner
+If you need to run the bot manually, use one of these commands:
 
 ```bash
-python run_bot_only.py
-```
+# Option 1: Using the workflow-specific bot (recommended for manual starting)
+./start_workflow_bot.sh
 
-### Option 3: Run the Standalone Bot Directly
-
-```bash
+# Option 2: Using the standalone bot script
 python standalone_discord_bot.py
+
+# Option 3: Using the workflow runner
+python discord_bot_workflow_runner.py
 ```
-
-## Common Issues
-
-### Commands Not Appearing in Discord
-
-- New commands can take up to an hour to propagate through Discord's systems
-- Make sure your bot has the proper intents enabled on the Discord Developer Portal
-
-### Application Not Responding to Commands
-
-- Check that you have the correct bot token in your `.env` file
-- Make sure the bot is running (check for "Bot is ready!" message in the console)
-- Verify that your Discord server has given proper permissions to the bot
-
-### Port Conflicts
-
-If you see errors about "Address already in use" for port 5000, it means both the web server and Discord bot are trying to use the same port. Use one of the methods above to run just the bot without the web server.
 
 ## Available Commands
 
-The bot has approximately 20 commands, including:
+The bot supports the following slash commands:
 
-### Verification
-- `/verify <roblox_username>` - Verify your Roblox account
-- `/update` - Update your nickname with your Roblox rank
-- `/background <roblox_username>` - Check if user is in blacklisted groups
+### `/ping`
+A simple command to check if the bot is responsive.
 
-### Moderation
-- `/kick <member> [reason]` - Kick a member
-- `/ban <member> [reason]` - Ban a member
-- `/timeout <member> <duration> [reason]` - Timeout a member
-- `/antiraid <action>` - Toggle anti-raid protection
+### `/blacklist <group_id>`
+Add a Roblox group to the blacklist.
+- **group_id**: The ID of the Roblox group to blacklist
 
-### Group Management
-- `/blacklistedgroups <group_id>` - Add a Roblox group to the blacklist
-- `/removeblacklist <group_id>` - Remove a Roblox group from the blacklist
-- `/rank <roblox_username> [rank_name]` - View or change a user's rank
-- `/setup_roles [verified_role] [mod_role] [admin_role]` - Set up verification and moderation roles
+### `/unblacklist <group_id>`
+Remove a Roblox group from the blacklist.
+- **group_id**: The ID of the Roblox group to remove from the blacklist
 
-### Support System
-- `/ticket` - Create a support ticket
-- `/closeticket` - Close a ticket channel
-- `/sendticket [channel]` - Send the ticket panel to a channel
+### `/background <roblox_username>`
+Check if a Roblox user is in any blacklisted groups.
+- **roblox_username**: The Roblox username to check
+
+## Troubleshooting
+
+If you encounter issues with the bot:
+
+1. Check that the DISCORD_TOKEN environment variable is set correctly
+2. Make sure you're using one of the recommended methods to start the bot
+3. Check the logs for any error messages
+4. If the bot fails to start due to port conflicts, use the workflow-specific bot (`start_workflow_bot.sh`) which uses port 9000 instead of 5000
+
+## Additional Information
+
+- The bot stores blacklisted groups in the `data/blacklisted_groups.json` file
+- The background check command uses the Roblox API to verify if a user is in any blacklisted groups
+- The bot uses Discord slash commands, which may take a few minutes to register with Discord when first added to a server
