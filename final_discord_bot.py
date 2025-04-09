@@ -207,13 +207,13 @@ async def on_guild_join(guild):
 # ======================================
 
 @bot.hybrid_command(name="ping", description="Check if the bot is responding")
-async def ping(interaction: discord.Interaction):
+async def ping(ctx):
     """Simple ping command to test if the bot is working"""
     latency = round(bot.latency * 1000)
-    await interaction.response.send_message(f"Pong! Bot latency: {latency}ms")
+    await ctx.send(f"Pong! Bot latency: {latency}ms")
 
 @bot.hybrid_command(name="help", description="Get help with bot commands")
-async def help_command(interaction: discord.Interaction):
+async def help_command(ctx):
     """Help command showing available commands"""
     embed = discord.Embed(
         title="ForCorn Bot Commands",
@@ -272,7 +272,7 @@ async def help_command(interaction: discord.Interaction):
     )
     
     embed.set_footer(text="Final Discord Bot - All 20 commands available")
-    await interaction.response.send_message(embed=embed)
+    await ctx.send(embed=embed)
 
 @bot.hybrid_command(name="about", description="About the ForCorn bot")
 async def about(interaction: discord.Interaction):
