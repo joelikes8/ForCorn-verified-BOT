@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
-Discord Bot Entry Point
+Main Discord Bot Entry Point for Workflow
 
-This script is designed to be the entry point for the Discord bot when run
-in the discord_bot workflow. It has no dependencies on the web interface
-and does not start a Flask server.
+This script is specifically designed to be used as the entry point for the 'discord_bot' workflow.
+It handles port conflicts by explicitly setting PORT=9000 and ensures the bot runs in isolation.
 """
 
 import os
 import sys
 import logging
-import subprocess
+
+# Set environment variables to prevent conflicts
+os.environ["PORT"] = "9000"
+os.environ["DISCORD_BOT_WORKFLOW"] = "true"
+os.environ["BOT_ONLY_MODE"] = "true"
+os.environ["NO_WEB_SERVER"] = "true"
 
 # Configure logging
 logging.basicConfig(
@@ -20,40 +24,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("discord_bot_main")
 
-# Make it obvious we're in bot-only mode
-logger.info("=" * 50)
-logger.info("STARTING IN DISCORD BOT ONLY MODE")
-logger.info("=" * 50)
+# Load the standalone bot directly
+logger.info("Starting standalone Discord bot...")
 
-# Set environment variables for child processes
-os.environ["DISCORD_BOT_WORKFLOW"] = "true"
-os.environ["NO_WEB_SERVER"] = "true"
-os.environ["BOT_ONLY_MODE"] = "true"
-
-def main():
-    """Main function to run the Discord bot"""
-    try:
-        # Try to import and run standalone bot directly
-        logger.info("Starting standalone Discord bot...")
-        try:
-            # Try to import and run directly
-            from standalone_discord_bot import main as run_bot
-            run_bot()
-        except ImportError:
-            # If that fails, try completely isolated bot
-            logger.warning("Could not import standalone_discord_bot, trying completely_isolated_bot")
-            try:
-                from completely_isolated_bot import main as run_isolated_bot
-                run_isolated_bot()
-            except ImportError:
-                # If all imports fail, run as subprocess
-                logger.warning("Could not import bot modules directly, trying subprocess")
-                subprocess.run(["python", "standalone_discord_bot.py"], check=True)
-    except Exception as e:
-        logger.critical(f"Failed to start Discord bot: {e}")
-        import traceback
-        logger.critical(traceback.format_exc())
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+try:
+    # Import and run the standalone bot module directly
+    from standalone_discord_bot import main as run_bot
+    
+    # Run the bot
+    run_bot()
+except Exception as e:
+    logger.critical(f"Failed to start bot: {e}")
+    import traceback
+    logger.critical(traceback.format_exc())
+    sys.exit(1)

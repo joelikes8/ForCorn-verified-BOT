@@ -13,3 +13,6 @@ Werkzeug
 pynacl
 psutil
 aiohttp
+psutil
+python-dotenv
+discord-py

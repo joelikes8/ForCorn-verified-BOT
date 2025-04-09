@@ -1,6 +1,19 @@
 #!/bin/bash
-# Workflow-specific Discord Bot Runner
-# This script is meant to be used by the discord_bot workflow only
+# Discord bot workflow script
+set -e
 
-# Run the Discord bot-specific main file
-python discord_bot_main.py
+# Set environment variables to ensure we're running the bot
+export DISCORD_BOT_WORKFLOW=true
+export BOT_ONLY_MODE=true
+export NO_WEB_SERVER=true
+export PORT=9000
+
+# Kill any lingering web processes
+pkill -f "python.*main\.py" || true
+pkill -f "gunicorn" || true
+sleep 1
+
+echo "Starting Discord bot via workflow script..."
+
+# Run the standalone bot to ensure all commands are available
+python standalone_discord_bot.py

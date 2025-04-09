@@ -1,62 +1,76 @@
 # ForCorn Discord Bot Command Guide
 
-This guide explains how to run the Discord bot and what commands are available.
+This guide provides information about all available commands in the ForCorn Discord bot and how to run the bot.
 
 ## Running the Bot
 
-There are several ways to run the Discord bot:
+There are two ways to run the Discord bot:
 
-### Method 1: Using the Workflow System (Recommended)
+1. **Using the workflow (recommended)**
+   - The discord_bot workflow should automatically start the bot
+   - If it's running a web server instead, you can manually start the bot using:
+   ```
+   ./run_bot.sh
+   ```
 
-In the Replit interface, click on "Run" to start both the web application and Discord bot workflows.
-
-If you need to run only the Discord bot workflow, use the workflow selector in the top panel and choose "discord_bot".
-
-### Method 2: Running the Bot Manually
-
-If you need to run the bot manually, use one of these commands:
-
-```bash
-# Option 1: Using the workflow-specific bot (recommended for manual starting)
-./start_workflow_bot.sh
-
-# Option 2: Using the standalone bot script
-python standalone_discord_bot.py
-
-# Option 3: Using the workflow runner
-python discord_bot_workflow_runner.py
-```
+2. **Running manually**
+   - You can run the bot directly with:
+   ```
+   python standalone_discord_bot.py
+   ```
+   - This will start the Discord bot with all 20 commands
 
 ## Available Commands
 
-The bot supports the following slash commands:
+### General
+- `/ping` - Check if the bot is responding
+- `/help` - Display a list of available commands
+- `/about` - Show information about the bot
 
-### `/ping`
-A simple command to check if the bot is responsive.
+### Verification
+- `/verify <roblox_username>` - Verify your Roblox account
+- `/update` - Update your nickname with your Roblox rank
+- `/background <roblox_username>` - Check if a user is in blacklisted groups
 
-### `/blacklist <group_id>`
-Add a Roblox group to the blacklist.
-- **group_id**: The ID of the Roblox group to blacklist
+### Tickets
+- `/ticket` - Create a support ticket
+- `/closeticket` - Close an open ticket channel
+- `/sendticket [channel]` - Send the ticket panel to a channel
 
-### `/unblacklist <group_id>`
-Remove a Roblox group from the blacklist.
-- **group_id**: The ID of the Roblox group to remove from the blacklist
+### Group Management
+- `/rank <roblox_username> [rank_name]` - View or change a user's rank in the Roblox group
+- `/setupid <group_id>` - Set the Roblox group ID for the server
+- `/ranksetup <group_id>` - Set up the Roblox group ID for ranking
+- `/setuptoken <token>` - Configure the Roblox API token for ranking
 
-### `/background <roblox_username>`
-Check if a Roblox user is in any blacklisted groups.
-- **roblox_username**: The Roblox username to check
+### Moderation
+- `/kick <member> [reason]` - Kick a member from the server
+- `/ban <member> [reason]` - Ban a member from the server
+- `/timeout <member> <duration> [reason]` - Apply a timeout to a member
+- `/antiraid <action>` - Toggle anti-raid protection
+
+### Server Setup
+- `/setup_roles [verified_role] [mod_role] [admin_role]` - Configure verification and moderation roles
+- `/blacklistedgroups <group_id>` - Add a Roblox group to the blacklist
+- `/removeblacklist <group_id>` - Remove a Roblox group from the blacklist
 
 ## Troubleshooting
 
-If you encounter issues with the bot:
+If the bot doesn't start or commands are missing:
 
-1. Check that the DISCORD_TOKEN environment variable is set correctly
-2. Make sure you're using one of the recommended methods to start the bot
-3. Check the logs for any error messages
-4. If the bot fails to start due to port conflicts, use the workflow-specific bot (`start_workflow_bot.sh`) which uses port 9000 instead of 5000
+1. Check if the bot is already running with:
+   ```
+   ps aux | grep python
+   ```
 
-## Additional Information
+2. If multiple instances are running, kill them first:
+   ```
+   pkill -f "python.*discord" || true
+   ```
 
-- The bot stores blacklisted groups in the `data/blacklisted_groups.json` file
-- The background check command uses the Roblox API to verify if a user is in any blacklisted groups
-- The bot uses Discord slash commands, which may take a few minutes to register with Discord when first added to a server
+3. Then start the bot using the run_bot.sh script:
+   ```
+   ./run_bot.sh
+   ```
+
+4. If commands are still missing, it may take up to an hour for Discord to fully register all commands.

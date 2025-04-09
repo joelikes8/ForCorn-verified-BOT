@@ -5,26 +5,27 @@ Direct Bot Launcher
 This script imports and runs the completely isolated bot.
 It avoids any imports from the main project to prevent conflicts.
 """
-
+import os
 import sys
-import logging
+import subprocess
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger("direct_bot")
+# Set environment variables to avoid conflicts with web app
+os.environ["PORT"] = "9000"
+os.environ["DISCORD_BOT_WORKFLOW"] = "true"
+os.environ["BOT_ONLY_MODE"] = "true"
+os.environ["NO_WEB_SERVER"] = "true"
+os.environ["SKIP_WEBAPP"] = "true"
 
-logger.info("Starting direct bot launcher...")
+# Print header
+print("="*80)
+print("DIRECT BOT LAUNCHER")
+print("This script avoids any imports from the main project")
+print("="*80)
 
-# Direct import to the isolated bot
+# Run the standalone_discord_bot.py directly
 try:
-    from completely_isolated_bot import main as run_bot
-    logger.info("Successfully imported isolated bot")
-    run_bot()
+    print("Starting standalone Discord bot...")
+    subprocess.run([sys.executable, "standalone_discord_bot.py"], check=True)
 except Exception as e:
-    logger.error(f"Failed to run isolated bot: {e}")
-    import traceback
-    logger.error(traceback.format_exc())
+    print(f"Error starting bot: {e}")
     sys.exit(1)
