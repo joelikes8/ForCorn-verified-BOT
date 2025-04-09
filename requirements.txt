@@ -16,3 +16,5 @@ aiohttp
 psutil
 python-dotenv
 discord-py
+discord.py[voice]
+discord.py

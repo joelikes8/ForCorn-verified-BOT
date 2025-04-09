@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Discord Bot Launcher Script
-# This script starts the Discord bot as a standalone process
+# Discord Bot With Reaction Actions Launcher
+# This script starts the Discord bot with the reaction actions feature
 #
 
-# Set environment variables to indicate bot-only mode
+# Set environment variables 
 export DISCORD_BOT_WORKFLOW=true
 export NO_WEB_SERVER=true
 export BOT_ONLY_MODE=true
@@ -12,7 +12,7 @@ export PORT=9000
 
 # Print banner
 echo "============================================="
-echo "         STARTING DISCORD BOT ONLY           "
+echo "  DISCORD BOT WITH REACTION ACTIONS FEATURE  "
 echo "============================================="
 echo "PID: $$"
 echo "Running from: $(pwd)"

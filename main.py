@@ -29,68 +29,21 @@ if os.environ.get("DISCORD_BOT_WORKFLOW") or os.environ.get("BOT_ONLY_MODE"):
     if not os.environ.get("PORT"):
         os.environ["PORT"] = "9000"
     
-    # Try different approaches to start the bot, in priority order
-    bot_started = False
-    
-    # 1. First try our optimized workflow runner
-    if not bot_started:
-        try:
-            if os.path.exists("discord_bot_workflow_runner.py"):
-                logger.info("Starting bot using discord_bot_workflow_runner.py...")
-                from discord_bot_workflow_runner import main as run_bot_workflow
-                run_bot_workflow()
-                bot_started = True
-                sys.exit(0)  # Exit after bot is done
-        except Exception as e:
-            logger.warning(f"Could not start bot using workflow runner: {e}")
-    
-    # 2. Then try our simplified runner
-    if not bot_started:
-        try:
-            if os.path.exists("run_bot_only.py"):
-                logger.info("Starting bot using run_bot_only.py...")
-                from run_bot_only import main as run_bot_only
-                run_bot_only()
-                bot_started = True
-                sys.exit(0)  # Exit after bot is done
-        except Exception as e:
-            logger.warning(f"Could not start bot using simplified runner: {e}")
-    
-    # 3. Direct import as a last resort
-    if not bot_started:
-        try:
-            # Import and run the standalone bot directly
-            logger.info("Starting standalone Discord bot directly...")
-            from standalone_discord_bot import main as run_bot
-            run_bot()
-            bot_started = True
-            sys.exit(0)  # Exit after bot is done
-        except ImportError as e:
-            logger.warning(f"Could not import standalone_discord_bot directly: {e}")
-    
-    # 4. Subprocess as the final fallback
-    if not bot_started:
-        try:
-            logger.info("Trying to start bot as subprocess...")
-            # Try to use any of our bot scripts, in order of preference
-            for script in [
-                "run_bot_only.py",
-                "discord_bot_workflow_runner.py",
-                "standalone_discord_bot.py",
-                "completely_isolated_bot.py",
-                "run_discord_bot.py"
-            ]:
-                if os.path.exists(script):
-                    logger.info(f"Starting bot using {script}")
-                    subprocess.run(["python", script], check=True)
-                    bot_started = True
-                    sys.exit(0)  # Exit after process is done
-                    break
-        except Exception as bot_error:
-            logger.critical(f"Failed to start bot as subprocess: {bot_error}")
-    
-    if not bot_started:
-        logger.critical("All attempts to start the bot failed!")
+    # For workflow, directly execute the bot without any imports
+    logger.info("Starting standalone Discord bot directly...")
+    try:
+        # Run the standalone bot as a subprocess to ensure complete isolation
+        import subprocess
+        logger.info("Running standalone_discord_bot.py as a separate process...")
+        result = subprocess.run(
+            ["python", "standalone_discord_bot.py"], 
+            check=True,
+            env=os.environ
+        )
+        logger.info(f"Bot process exited with code {result.returncode}")
+        sys.exit(result.returncode)  # Exit with same code as the bot
+    except Exception as e:
+        logger.critical(f"Failed to start the Discord bot: {e}")
         sys.exit(1)  # Exit with error code
 
 # First, try to import from the normal webapp

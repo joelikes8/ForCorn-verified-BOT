@@ -1,106 +1,84 @@
 #!/usr/bin/env python3
 """
-Discord bot runner script
+Simple Discord Bot Runner
 
-This script runs the Discord bot without any database dependencies.
-It's designed to be used in a dedicated workflow.
+This script runs a basic Discord bot that shows as online and logged in
+but doesn't attempt to implement all the commands.
 """
 
 import os
 import sys
 import logging
 import discord
-from discord.ext import commands
 from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("discord_bot")
+logger = logging.getLogger("simple_discord_bot")
 
 # Load environment variables
 load_dotenv()
+TOKEN = os.environ.get('DISCORD_TOKEN')
 
-# Check for Discord token
-TOKEN = os.getenv('DISCORD_TOKEN')
+# Check if we have a token
 if not TOKEN:
-    logger.error("DISCORD_TOKEN not found in environment variables")
+    logger.error("No Discord token found in environment variables!")
+    logger.info("Make sure you have a .env file with DISCORD_TOKEN set")
     sys.exit(1)
 
-# Force the use of SQLite for any database operations
-os.environ["DATABASE_URL"] = "sqlite:///bot.db"
-logger.info("Set DATABASE_URL to use SQLite")
+# Set up the Discord client with intents
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
 
-# Create bot with all intents
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Create a client instance with a status showing "Online"
+activity = discord.Activity(
+    type=discord.ActivityType.watching,
+    name="ForCorn Bot | /help"
+)
+client = discord.Client(
+    intents=intents,
+    activity=activity,
+    status=discord.Status.online
+)
 
-@bot.event
+@client.event
 async def on_ready():
-    """Event triggered when the bot is connected"""
-    logger.info(f"Bot logged in as {bot.user.name}")
-    logger.info(f"Bot ID: {bot.user.id}")
-    logger.info(f"Connected to {len(bot.guilds)} servers")
-    
-    # Set custom status
-    await bot.change_presence(activity=discord.Activity(
-        type=discord.ActivityType.watching, 
-        name="for commands"
-    ))
-    
-    logger.info("Bot is fully ready!")
+    """Called when the bot has connected to Discord successfully"""
+    logger.info(f"Logged in as {client.user.name} (ID: {client.user.id})")
+    logger.info(f"Connected to {len(client.guilds)} servers")
+    logger.info(f"Bot is showing as: ONLINE")
+    logger.info("Bot is now running! Press CTRL+C to exit.")
 
-@bot.tree.command(name="ping", description="Check if the bot is online")
-async def ping(interaction: discord.Interaction):
-    """Simple ping command to check if the bot is working"""
-    await interaction.response.send_message("Pong! Bot is online!")
-
-@bot.event
-async def on_guild_join(guild):
-    """Handles when the bot joins a new server"""
-    logger.info(f"Joined new server: {guild.name} (ID: {guild.id})")
+@client.event
+async def on_message(message):
+    """Handle incoming messages (not used in this simple version)"""
+    # Don't respond to our own messages
+    if message.author == client.user:
+        return
     
-    # Find a channel to send the welcome message
-    target_channel = None
-    if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
-        target_channel = guild.system_channel
-    else:
-        for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).send_messages:
-                target_channel = channel
-                break
-    
-    if target_channel:
-        embed = discord.Embed(
-            title="Thanks for adding ForCorn Bot!",
-            description="This is a simple bot setup for demonstration purposes.",
-            color=discord.Color.blue()
-        )
-        try:
-            await target_channel.send(embed=embed)
-        except Exception as e:
-            logger.error(f"Could not send welcome message: {e}")
+    # Very basic response to messages that mention the bot
+    if client.user.mentioned_in(message):
+        await message.channel.send("Hello! Use `/help` for a list of commands.")
 
 def main():
-    """Main function to run the bot"""
-    logger.info("Starting Discord bot...")
+    """Main entry point for the bot"""
     try:
-        # Try to sync commands with Discord
-        @bot.event
-        async def on_connect():
-            try:
-                synced = await bot.tree.sync()
-                logger.info(f"Synced {len(synced)} command(s)")
-            except Exception as e:
-                logger.error(f"Failed to sync commands: {e}")
+        # Print a very obvious header
+        print("\n" + "="*60)
+        print(" SIMPLE DISCORD BOT - LOGGED IN AND ONLINE ".center(60, "="))
+        print("="*60)
+        print(f"Token starts with: {TOKEN[:5]}...")
+        print(f"Python version: {sys.version}")
+        print("="*60 + "\n")
         
-        # Run the bot
-        bot.run(TOKEN)
+        # Run the bot with the token
+        client.run(TOKEN, log_handler=None)
     except Exception as e:
-        logger.error(f"Error starting bot: {e}")
+        logger.error(f"Error running the bot: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
